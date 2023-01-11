@@ -1,0 +1,136 @@
+##obtained from: https://www.youtube.com/watch?v=sEF1stn9ZwY
+
+
+## Load libraries
+
+Firstly, let's load the libraries that we will use.
+
+They will need to be installed first if you don't already have them.
+
+```{r}
+#install.packages('writexl')
+library(writexl)
+#install.packages("RNetCDF")
+library(RNetCDF)
+```
+
+
+## Loading the data
+
+```{r}
+data <- open.nc("E:\\duPontavice_bottom_temp_data\\bottom_temp_combined_product_1959-2021.nc")
+print.nc(data)
+```
+
+At a glance, we can see it has 2 dimensions; they denote that there are 168 depth points and 36 characters (NCHAR).
+
+There are 2 coordinate variables, with the same name as the dimensions. 
+
+There are 4 data variables. The CHLOROPHYLL_A, FILTERED_VOLUME and PHAEOPIGMENT variables all have depth as their dimension. This means that the first chlorophyll a value corresponds to the first depth value.
+
+The EVENT_ID has two dimensions, DEPTH and NCHAR. This is therefore a 2 dimensional array. This tells us that there is a maximum of one EVENT_ID for each of the 168 depths, and it has 36 characters - though variables can have missing values, denoted using a fill value. More on this later.
+
+Finally, we have a long list of global attributes.
+
+## A closer look
+
+We can access a variable attribute like this:
+  
+  ```{r}
+att.get.nc(data, "latitude", "units")
+```
+
+Let's write our data out as a variable we can easily use later:
+
+```{r}
+lat <- var.get.nc(data, "latitude")
+lon <-  var.get.nc(data, "longitude")
+
+memory.limit(55000) #increase memeory because bottom temp is huge (20+GB)
+bottom_temp <-  var.get.nc(data, "bottomT")
+
+time_data <-  var.get.nc(data, "time")
+
+
+
+```
+
+
+Create a dataframe. 
+
+```{r}
+df <- data.frame(Latitude = lat, Longitude = lon, BottomTemp = bottom_temp, Time = time_data)
+df
+```
+
+Let's remove the rows with NAs
+
+```{r}
+df <- na.omit(df)
+df
+```
+
+And then to output
+
+```{r}
+write_xlsx(df, '/home/lukem/chlorophyll_a_data_20191210_P2.xlsx')
+```
+
+
+
+
+
+
+
+
+```{r}
+
+library(raster)
+filename = "E:\\duPontavice_bottom_temp_data\\bottom_temp_combined_product_1959_2022_v1.nc"
+
+s=stack(filename, varname="bt_temp")
+```
+
+##
+BELOW SNIP IS FROM HUBERT FOR ACCESSING SPECIFIC DATA BY DAY AND YEAR
+
+```{r}
+library(tidync)
+
+filename = "E:\\duPontavice_bottom_temp_data\\bottom_temp_combined_product_1959_2022_v1.nc"
+
+data <- tidync::tidync(filename) %>%
+  tidync::hyper_filter(year=year%in%(2020:2021), day=day%in%(c((0:104),(200:999)))) %>%
+  tidync::hyper_tibble() %>%
+  as.data.frame() 
+
+
+#metadata info:
+library(ncdf4)
+nc_open(filename)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
