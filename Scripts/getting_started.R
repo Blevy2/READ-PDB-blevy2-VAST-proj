@@ -53,13 +53,17 @@ filename = "E:\\duPontavice_bottom_temp_data\\bottom_temp_combined_product_1959_
 tow_data_byday <- data.frame()
 tow_data_wTemp <- data.frame()
 
+
+miss_tmp_info <- data.frame()
+  
 for(rw in seq(length(Day_Year[,1]))){
+
   if(rw%%50==0){print(rw)}
   YR = Day_Year$YEAR[[rw]]
   DY = Day_Year$DayN[[rw]]
   
   #pull out all tows for a given day/year
-  tow_data_byday <- subset(tow_data, (YEAR == YR & DayN == DY))
+  tow_data_byday <- subset(tow_data, (( (YEAR <2022) & (YEAR == YR) & (DayN == DY)))) #no data in some of 2022 days
   lat_lon_tows = cbind(tow_data_byday$LONGITUDE,tow_data_byday$LATITUDE)
   colnames(lat_lon_tows) <- c("Longitude","Latitude")
 
@@ -74,7 +78,11 @@ for(rw in seq(length(Day_Year[,1]))){
   tows_temp = as.data.frame(rep("NoData",length(tow_data_byday$COMMON_NAME)))  
   colnames(tows_temp) = c("Temp_Hub")
   tow_data_byday = cbind(tow_data_byday, tows_temp)
-  print(c(YR,DY))}
+  print(c(YR,DY))
+ 
+  tmpp <- cbind(YR,DY)
+  miss_tmp_info <- rbind(miss_tmp_info,tmpp)
+  }
   
   
   #if temp data exists, add it to table
@@ -87,82 +95,113 @@ for(rw in seq(length(Day_Year[,1]))){
   #add Hubert temp data to table
   tow_data_byday = cbind(tow_data_byday,tows_temp)
   remove(temp_tmp)
-    }
+    #add temp data to tow data
+  tow_data_wTemp <- rbind(tow_data_wTemp,tow_data_byday)  }
   
   # #plot things to verify 
   # pts = terra::vect(lat_lon_tows) #survey locations
   # try(terra::plot(temp_tmp_rass)) #plot temperature data, if it exists
   # terra::plot(pts,add=T) #plot points on top
   
-  #add temp data to tow data
-  tow_data_wTemp <- rbind(tow_data_wTemp,tow_data_byday)
+
+
   
 }
 
 
 
 
+#save in table if needed
+#saveRDS(tow_data_wTemp,file="C:/Users/benjamin.levy/Desktop/Github/READ-PDB-blevy2-VAST-proj/tow_data_wTemp.RDS")
 
 
 #read in table if needed
-tow_data_wTemp <- readRDS("C:/Users/benjamin.levy/Desktop/Github/READ-PDB-blevy2-VAST-proj/tow_data_wTemp.RDS")
-
-
-#replace NA with -99
-tow_data_wTemp$BOT_TEMP[is.na(tow_data_wTemp$BOT_TEMP)] = -99
-range(tow_data_wTemp$BOT_TEMP)
-
-
-#how many NA values for huberts temp data?
-sum(is.na(tow_data_wTemp$Temp_Hub)) #141,712 out of 804K
-#how many NoData values for huberts temp
-sum(tow_data_wTemp$Temp_Hub=="NoData",na.rm=T ) #14,942
-#how many NaN values for huberts temp
-sum(tow_data_wTemp$Temp_Hub=="NaN",na.rm=T) #11,724
-
-#replace NA with 99
-tow_data_wTemp$Temp_Hub[is.na(tow_data_wTemp$Temp_Hub)] = 99
-#replace "NoData with 999
-tow_data_wTemp$Temp_Hub[tow_data_wTemp$Temp_Hub=="NoData"] = 999
-#replace "NaN" with 9999
-tow_data_wTemp$Temp_Hub[tow_data_wTemp$Temp_Hub=="NaN"] = 9999
-
-range(tow_data_wTemp$Temp_Hub)
-
-
-#add column to table that is difference in temp estimtes
-tow_data_wTemp$Temp_Diff = as.numeric(tow_data_wTemp$BOT_TEMP) - as.numeric(tow_data_wTemp$Temp_Hub)
-range(tow_data_wTemp$Temp_Diff)
+#tow_data_wTemp <- readRDS("C:/Users/benjamin.levy/Desktop/Github/READ-PDB-blevy2-VAST-proj/tow_data_wTemp.RDS")
 
 
 
-  
+
+# #replace NA with -99
+# tow_data_wTemp$BOT_TEMP[is.na(tow_data_wTemp$BOT_TEMP)] = -99999
+# range(tow_data_wTemp$BOT_TEMP)
+# 
+# 
+# #how many NA values for huberts temp data?
+# sum(is.na(tow_data_wTemp$Temp_Hub)) #141,712 out of 804K
+# #how many NoData values for huberts temp
+# sum(tow_data_wTemp$Temp_Hub=="NoData",na.rm=T ) #14,942
+# #how many NaN values for huberts temp
+# sum(tow_data_wTemp$Temp_Hub=="NaN",na.rm=T) #11,724
+# 
+# #replace NA with 99
+# tow_data_wTemp$Temp_Hub[is.na(tow_data_wTemp$Temp_Hub)] = 99
+# #replace "NoData with 999
+# tow_data_wTemp$Temp_Hub[tow_data_wTemp$Temp_Hub=="NoData"] = 99999
+# #replace "NaN" with 9999
+# tow_data_wTemp$Temp_Hub[tow_data_wTemp$Temp_Hub=="NaN"] = 99999999
+# 
+# range(tow_data_wTemp$Temp_Hub)
+
+
+
+
+#split it into table with just bottom_temp data, just hubert data, neither, and both (for difference)
+tow_data_jHubert <- subset(tow_data_wTemp, (Temp_Hub>-5) & (is.na(BOT_TEMP) ) )
+tow_data_jBotTem <- subset(tow_data_wTemp, (is.na(Temp_Hub) & (BOT_TEMP>-5) ) )
+tow_data_NoTempData <- subset(tow_data_wTemp, (is.na(Temp_Hub)) & (is.na(BOT_TEMP) ) )
+tow_data_bothTemp <- subset(tow_data_wTemp, (!is.na(Temp_Hub)) & (!is.na(BOT_TEMP)))
+
+
+#add column to table that is difference in temp estimates
+#tow_data_wTemp$Temp_Diff = as.numeric(tow_data_wTemp$BOT_TEMP) - as.numeric(tow_data_wTemp$Temp_Hub)
+#range(tow_data_wTemp$Temp_Diff)
+tow_data_bothTemp$Temp_Diff = as.numeric(tow_data_bothTemp$BOT_TEMP) - as.numeric(tow_data_bothTemp$Temp_Hub)
+
+range(tow_data_bothTemp$Temp_Diff)
+mean(tow_data_bothTemp$Temp_Diff)
+sd(tow_data_bothTemp$Temp_Diff)
+
+
+
+#plot spatial difference in temperature estimates  
 library(ggplot2)
 
 
-
-
-
 pdf(file="plotting differences in temperature estimates.pdf")
-
-#build point raster with missing values and plot it
-ms_lat = tow_data_wTemp$LATITUDE[tow_data_wTemp$Temp_Diff< -20]
-ms_lon = tow_data_wTemp$LONGITUDE[tow_data_wTemp$Temp_Diff< -20]
-ms_diff = tow_data_wTemp$Temp_Diff[tow_data_wTemp$Temp_Diff< -20]
-ms_yrs = tow_data_wTemp$YEAR[tow_data_wTemp$Temp_Dif< -20]
+ 
+# #build point raster with missing values and plot it
+# ms_lat = tow_data_wTemp$LATITUDE[tow_data_wTemp$Temp_Diff< -20]
+# ms_lon = tow_data_wTemp$LONGITUDE[tow_data_wTemp$Temp_Diff< -20]
+# ms_diff = tow_data_wTemp$Temp_Diff[tow_data_wTemp$Temp_Diff< -20]
+# ms_yrs = tow_data_wTemp$YEAR[tow_data_wTemp$Temp_Dif< -20]
 #missing_tmp_rass <- terra::vect(cbind(ms_lon,ms_lat),atts=as.data.frame(ms_diff))
 
 #plot missing value diff
-print(ggplot(data=as.data.frame(ms_diff),aes(x=ms_lon,y=ms_lat)) +
-  geom_point(aes(colour=abs(ms_diff)))+
-  scale_colour_gradient(low = "yellow", high = "red")+
-  ggtitle(paste("Missing values", " N = ", length(ms_lat))))
+# print(ggplot(data=as.data.frame(ms_diff),aes(x=ms_lon,y=ms_lat)) +
+#   geom_point(aes(colour=abs(ms_diff)))+
+#   scale_colour_gradient(low = "yellow", high = "red")+
+#   ggtitle(paste("Missing values", " N = ", length(ms_lat))))
 
-#plot years for missing vlaues
-print(ggplot(data=as.data.frame(ms_yrs),aes(x=ms_lon,y=ms_lat)) +
-        geom_point(aes(colour=ms_yrs))+
-        scale_colour_gradient(low = "yellow", high = "red")+
-        ggtitle(paste("Missing values", " N = ", length(ms_lat))))
+#both missing
+print(ggplot(data=as.data.frame(tow_data_NoTempData),aes(x=LATITUDE,y=LONGITUDE)) +
+  geom_point(aes(colour=factor(YEAR)))+
+  ggtitle(paste("Missing BOTH Temp Values", " N = ", length(tow_data_NoTempData$LATITUDE), "~",round(100*length(tow_data_NoTempData$LATITUDE)/length(tow_data_wTemp$LATITUDE),0),"% of all entries")))
+
+#just hubert (bot_temp missing)
+print(ggplot(data=as.data.frame(tow_data_jHubert),aes(x=LATITUDE,y=LONGITUDE)) +
+        geom_point(aes(colour=factor(YEAR)))+
+        ggtitle(paste("Just Hubert (no bot_temp)", " N = ", length(tow_data_jHubert$LATITUDE), "~",round(100*length(tow_data_jHubert$LATITUDE)/length(tow_data_wTemp$LATITUDE),0),"% of all entries")))
+
+#just bot_temp (hubert missing)
+print(ggplot(data=as.data.frame(tow_data_jBotTem),aes(x=LATITUDE,y=LONGITUDE)) +
+        geom_point(aes(colour=factor(YEAR)))+
+        ggtitle(paste("Just Bot_Temp (no hubert data)", " N = ", length(tow_data_jBotTem$LATITUDE),"~",round(100*length(tow_data_jBotTem$LATITUDE)/length(tow_data_wTemp$LATITUDE),0),"% of all entries")))
+
+# #plot years
+# print(ggplot(data=as.data.frame(ms_yrs),aes(x=ms_lon,y=ms_lat)) +
+#         geom_point(aes(colour=ms_yrs))+
+#         scale_colour_gradient(low = "yellow", high = "red")+
+#         ggtitle(paste("Missing values", " N = ", length(ms_lat))))
       
 #build point raster with differences and plot it
 temp_threshs = c(0.5,1,2,3,5,7)
@@ -170,16 +209,16 @@ ct=1
 for(thresh in temp_threshs){
   ifelse(ct==length(temp_threshs),
 {
-  dif_lat = tow_data_wTemp$LATITUDE[tow_data_wTemp$Temp_Diff> thresh]
-dif_lon = tow_data_wTemp$LONGITUDE[tow_data_wTemp$Temp_Diff> thresh]
-dif_diff = tow_data_wTemp$Temp_Diff[tow_data_wTemp$Temp_Diff> thresh]
-dif_yrs = tow_data_wTemp$YEAR[tow_data_wTemp$Temp_Diff> thresh]
+  dif_lat = tow_data_bothTemp$LATITUDE[abs(tow_data_bothTemp$Temp_Diff)> thresh]
+dif_lon = tow_data_bothTemp$LONGITUDE[abs(tow_data_bothTemp$Temp_Diff)> thresh]
+dif_diff = tow_data_bothTemp$Temp_Diff[abs(tow_data_bothTemp$Temp_Diff)> thresh]
+dif_yrs = tow_data_bothTemp$YEAR[abs(tow_data_bothTemp$Temp_Diff)> thresh]
 },
 {
-dif_lat = tow_data_wTemp$LATITUDE[(tow_data_wTemp$Temp_Diff> thresh) & (tow_data_wTemp$Temp_Diff< temp_threshs[ct+1])]
-dif_lon = tow_data_wTemp$LONGITUDE[(tow_data_wTemp$Temp_Diff> thresh) & (tow_data_wTemp$Temp_Diff< temp_threshs[ct+1])]
-dif_diff = tow_data_wTemp$Temp_Diff[(tow_data_wTemp$Temp_Diff> thresh) & (tow_data_wTemp$Temp_Diff< temp_threshs[ct+1])]
-dif_yrs = tow_data_wTemp$YEAR[(tow_data_wTemp$Temp_Diff> thresh) & (tow_data_wTemp$Temp_Diff< temp_threshs[ct+1])]
+dif_lat = tow_data_bothTemp$LATITUDE[(abs(tow_data_bothTemp$Temp_Diff)> thresh) & (abs(tow_data_bothTemp$Temp_Diff)< temp_threshs[ct+1])]
+dif_lon = tow_data_bothTemp$LONGITUDE[(abs(tow_data_bothTemp$Temp_Diff)> thresh) & (abs(tow_data_bothTemp$Temp_Diff)< temp_threshs[ct+1])]
+dif_diff = tow_data_bothTemp$Temp_Diff[(abs(tow_data_bothTemp$Temp_Diff)> thresh) & (abs(tow_data_bothTemp$Temp_Diff)< temp_threshs[ct+1])]
+dif_yrs = tow_data_bothTemp$YEAR[(abs(tow_data_bothTemp$Temp_Diff)> thresh) & (abs(tow_data_bothTemp$Temp_Diff)< temp_threshs[ct+1])]
 }
 )
   
@@ -190,17 +229,20 @@ dif_yrs = tow_data_wTemp$YEAR[(tow_data_wTemp$Temp_Diff> thresh) & (tow_data_wTe
 print(ggplot(data=as.data.frame(dif_diff),aes(x=dif_lon,y=dif_lat)) +
   geom_point(aes(colour=abs(dif_diff))) +
   scale_colour_gradient(low = "yellow", high = "red")+
-    ggtitle(paste("temp difference > ",thresh, " N = ", length(dif_lat))))
+    ggtitle(paste("temp difference > ",thresh, " N = ", length(dif_lat), "~", round(100*length(dif_lat)/length(tow_data_bothTemp$LATITUDE),0),"% of data w both temp")))
 
 #plot year as color
 print(ggplot(data=as.data.frame(dif_yrs),aes(x=dif_lon,y=dif_lat)) +
         geom_point(aes(colour=factor(dif_yrs)))+
-        ggtitle(paste("temp difference > ",thresh, " N = ", length(dif_lat)))) 
+        ggtitle(paste("temp difference > ",thresh, " N = ", length(dif_lat), "~", round(100*length(dif_lat)/length(tow_data_bothTemp$LATITUDE),0),"% of data w both temp"))) 
 
 ct=ct+1
 }
 
 dev.off()
+
+
+
 
 
 
