@@ -141,8 +141,11 @@ for(rw in seq(length(Day_Year[,1]))){
 # tow_data_wTemp$Temp_Hub[tow_data_wTemp$Temp_Hub=="NaN"] = 99999999
 # 
 # range(tow_data_wTemp$Temp_Hub)
+library(ggplot2)
 
 
+
+pdf(file="Plots/plotting differences in temperature estimates.pdf")
 
 
 #split it into table with just bottom_temp data, just hubert data, neither, and both (for difference)
@@ -162,82 +165,13 @@ mean(tow_data_bothTemp$Temp_Diff)
 sd(tow_data_bothTemp$Temp_Diff)
 
 
+plot_tow_NA_data(TD = tow_data_wTemp)
+
+
 
 #plot spatial difference in temperature estimates  
-library(ggplot2)
 
 
-pdf(file="plotting differences in temperature estimates.pdf")
- 
-# #build point raster with missing values and plot it
-# ms_lat = tow_data_wTemp$LATITUDE[tow_data_wTemp$Temp_Diff< -20]
-# ms_lon = tow_data_wTemp$LONGITUDE[tow_data_wTemp$Temp_Diff< -20]
-# ms_diff = tow_data_wTemp$Temp_Diff[tow_data_wTemp$Temp_Diff< -20]
-# ms_yrs = tow_data_wTemp$YEAR[tow_data_wTemp$Temp_Dif< -20]
-#missing_tmp_rass <- terra::vect(cbind(ms_lon,ms_lat),atts=as.data.frame(ms_diff))
-
-#plot missing value diff
-# print(ggplot(data=as.data.frame(ms_diff),aes(x=ms_lon,y=ms_lat)) +
-#   geom_point(aes(colour=abs(ms_diff)))+
-#   scale_colour_gradient(low = "yellow", high = "red")+
-#   ggtitle(paste("Missing values", " N = ", length(ms_lat))))
-
-#both missing
-print(ggplot(data=as.data.frame(tow_data_NoTempData),aes(x=LATITUDE,y=LONGITUDE)) +
-  geom_point(aes(colour=factor(YEAR)))+
-  ggtitle(paste("Missing BOTH Temp Values", " N = ", length(tow_data_NoTempData$LATITUDE), "~",round(100*length(tow_data_NoTempData$LATITUDE)/length(tow_data_wTemp$LATITUDE),0),"% of all entries")))
-
-#just hubert (bot_temp missing)
-print(ggplot(data=as.data.frame(tow_data_jHubert),aes(x=LATITUDE,y=LONGITUDE)) +
-        geom_point(aes(colour=factor(YEAR)))+
-        ggtitle(paste("Just Hubert (no bot_temp)", " N = ", length(tow_data_jHubert$LATITUDE), "~",round(100*length(tow_data_jHubert$LATITUDE)/length(tow_data_wTemp$LATITUDE),0),"% of all entries")))
-
-#just bot_temp (hubert missing)
-print(ggplot(data=as.data.frame(tow_data_jBotTem),aes(x=LATITUDE,y=LONGITUDE)) +
-        geom_point(aes(colour=factor(YEAR)))+
-        ggtitle(paste("Just Bot_Temp (no hubert data)", " N = ", length(tow_data_jBotTem$LATITUDE),"~",round(100*length(tow_data_jBotTem$LATITUDE)/length(tow_data_wTemp$LATITUDE),0),"% of all entries")))
-
-# #plot years
-# print(ggplot(data=as.data.frame(ms_yrs),aes(x=ms_lon,y=ms_lat)) +
-#         geom_point(aes(colour=ms_yrs))+
-#         scale_colour_gradient(low = "yellow", high = "red")+
-#         ggtitle(paste("Missing values", " N = ", length(ms_lat))))
-      
-#build point raster with differences and plot it
-temp_threshs = c(0.5,1,2,3,5,7)
-ct=1
-for(thresh in temp_threshs){
-  ifelse(ct==length(temp_threshs),
-{
-  dif_lat = tow_data_bothTemp$LATITUDE[abs(tow_data_bothTemp$Temp_Diff)> thresh]
-dif_lon = tow_data_bothTemp$LONGITUDE[abs(tow_data_bothTemp$Temp_Diff)> thresh]
-dif_diff = tow_data_bothTemp$Temp_Diff[abs(tow_data_bothTemp$Temp_Diff)> thresh]
-dif_yrs = tow_data_bothTemp$YEAR[abs(tow_data_bothTemp$Temp_Diff)> thresh]
-},
-{
-dif_lat = tow_data_bothTemp$LATITUDE[(abs(tow_data_bothTemp$Temp_Diff)> thresh) & (abs(tow_data_bothTemp$Temp_Diff)< temp_threshs[ct+1])]
-dif_lon = tow_data_bothTemp$LONGITUDE[(abs(tow_data_bothTemp$Temp_Diff)> thresh) & (abs(tow_data_bothTemp$Temp_Diff)< temp_threshs[ct+1])]
-dif_diff = tow_data_bothTemp$Temp_Diff[(abs(tow_data_bothTemp$Temp_Diff)> thresh) & (abs(tow_data_bothTemp$Temp_Diff)< temp_threshs[ct+1])]
-dif_yrs = tow_data_bothTemp$YEAR[(abs(tow_data_bothTemp$Temp_Diff)> thresh) & (abs(tow_data_bothTemp$Temp_Diff)< temp_threshs[ct+1])]
-}
-)
-  
-  
-
-
-#plot difference as color
-print(ggplot(data=as.data.frame(dif_diff),aes(x=dif_lon,y=dif_lat)) +
-  geom_point(aes(colour=abs(dif_diff))) +
-  scale_colour_gradient(low = "yellow", high = "red")+
-    ggtitle(paste("temp difference > ",thresh, " N = ", length(dif_lat), "~", round(100*length(dif_lat)/length(tow_data_bothTemp$LATITUDE),0),"% of data w both temp")))
-
-#plot year as color
-print(ggplot(data=as.data.frame(dif_yrs),aes(x=dif_lon,y=dif_lat)) +
-        geom_point(aes(colour=factor(dif_yrs)))+
-        ggtitle(paste("temp difference > ",thresh, " N = ", length(dif_lat), "~", round(100*length(dif_lat)/length(tow_data_bothTemp$LATITUDE),0),"% of data w both temp"))) 
-
-ct=ct+1
-}
 
 dev.off()
 
@@ -265,18 +199,31 @@ terra::plot(rass)
 
 
 
+#do the same plots by species to evaluate temperature data and missing data by species
+
+
+#Read in tow data that has both temperature data
+
+#tow_data_wTemp <- readRDS("C:/Users/benjamin.levy/Desktop/Github/READ-PDB-blevy2-VAST-proj/tow_data_wTemp.RDS")
+
+#species names
+S_names <- unique(tow_data_wTemp[c("COMMON_NAME","SPECIES_ITIS","STOCK_ABBREV")])
+
+
+
+
+
 
 #THIS LOOP BREAKS UP THE TOW DATA BY SPECIES
-names <- xx #start with this one
 
 tow_data_species <- list()
-for(rw in seq(length(names$COMMON_NAME))){
+for(rw in seq(length(S_names$COMMON_NAME))){
   
-  CN = names$COMMON_NAME[[rw]] #common name
-  SI = as.character(names$SPECIES_ITIS[[rw]]) #species_itis
-  SA = names$STOCK_ABBREV[[rw]] #stock_abbrev
+  CN = S_names$COMMON_NAME[[rw]] #common name
+  SI = as.character(S_names$SPECIES_ITIS[[rw]]) #species_itis
+  SA = S_names$STOCK_ABBREV[[rw]] #stock_abbrev
   
-  tow_data_species[[CN]][[SI]][[SA]] <- subset(tow_data, (COMMON_NAME == CN & SPECIES_ITIS == SI & STOCK_ABBREV == SA))
+  tow_data_species[[CN]][[SA]] <- subset(tow_data_wTemp, (COMMON_NAME == CN & SPECIES_ITIS == SI & STOCK_ABBREV == SA))
   
   
 }
@@ -292,14 +239,23 @@ for(rw in seq(length(names$COMMON_NAME))){
 
 
 
+#plot spatial difference in temperature estimates  
+library(ggplot2)
 
+source(file=paste(getwd(),"/Scripts/plot_tow_NA_data.R",sep=""))
 
+for(name in names(tow_data_species)){
+  
+  for(Unit in names(tow_data_species[[name]])){
 
+pdf(file=paste("Plots/Data_by_Unit/",name,"_",Unit,"_plotting differences in temperature estimates.pdf",sep=""))
 
+plot_tow_NA_data(TD = tow_data_species[[name]][[Unit]])
 
-
-
-
+#close pdf for given species
+dev.off()
+}
+}
 
 
 

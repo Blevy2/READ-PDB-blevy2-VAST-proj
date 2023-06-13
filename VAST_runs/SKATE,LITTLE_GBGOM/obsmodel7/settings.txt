@@ -1,0 +1,94 @@
+$Version
+[1] "VAST_v13_1_0"
+
+$n_x
+[1] 500
+
+$Region
+[1] "northwest_atlantic"
+
+$strata.limits
+   STRATA
+1    1150
+2    1140
+3    1130
+4    1190
+5    1200
+6    1160
+7    1180
+8    1170
+9    1210
+10   1220
+11   1290
+12   1300
+13   1250
+14   1240
+15   1270
+16   1280
+17   1370
+18   1230
+19   1360
+20   1390
+21   1380
+22   1400
+23   1260
+24   3640
+25   3650
+26   3610
+27   3590
+28   3600
+29   3560
+30   3660
+31   3630
+32   3580
+
+$zone
+[1] NA
+
+$FieldConfig
+  Omega1 Epsilon1   Omega2 Epsilon2 
+       0        0        1        1 
+
+$RhoConfig
+   Beta1    Beta2 Epsilon1 Epsilon2 
+       3        0        0        4 
+
+$VamConfig
+Method   Rank Timing 
+     0      0      0 
+
+$OverdispersionConfig
+Eta1 Eta2 
+   0    0 
+
+$ObsModel
+[1] 10  2
+
+$vars_to_correct
+[1] "Index_cyl" "Index_ctl"
+
+$Options
+           Calculate_Range   Calculate_effective_area treat_nonencounter_as_zero 
+                      TRUE                       TRUE                       TRUE 
+
+$grid_size_km
+[1] 25
+
+$max_cells
+[1] 5000
+
+$knot_method
+[1] "samples"
+
+$Method
+[1] "Mesh"
+
+$use_anisotropy
+[1] TRUE
+
+$fine_scale
+[1] TRUE
+
+$bias.correct
+[1] TRUE
+
