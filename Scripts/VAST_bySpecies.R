@@ -6,7 +6,8 @@ library(dplyr)
 
 #Read in tow data that has both temperature data
 
-tow_data_wTemp <- readRDS("C:/Users/benjamin.levy/Desktop/Github/READ-PDB-blevy2-VAST-proj/tow_data_wTemp.RDS")
+tow_data_wTemp <- readRDS("tow_data_wTemp.RDS")
+
 
 #species names
 S_names <- unique(tow_data_wTemp[c("COMMON_NAME","SPECIES_ITIS","STOCK_ABBREV")])
@@ -123,6 +124,9 @@ settings <- make_settings(n_x = 500,  #NEED ENOUGH KNOTS OR WILL HAVE ISSUES WIT
                           RhoConfig = RhoConfig,
                           ObsModel = obsmodel,
                           knot_method = "samples")
+
+#avoids specific error related to running on server
+settings$Version <- 'VAST_v12_0_0'
 
 #covariate formula
 X2_formula = ~ poly(Temp_Est, degree=2 ) 
