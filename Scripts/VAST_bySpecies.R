@@ -19,17 +19,23 @@ S_names <- unique(tow_data_wTemp[c("COMMON_NAME","SPECIES_ITIS","STOCK_ABBREV")]
 
 #THIS LOOP BREAKS UP THE TOW DATA BY SPECIES
 
-tow_data_species <- list()
-for(rw in seq(length(S_names$COMMON_NAME))){
-  
-  CN = S_names$COMMON_NAME[[rw]] #common name
-  SI = as.character(S_names$SPECIES_ITIS[[rw]]) #species_itis
-  SA = S_names$STOCK_ABBREV[[rw]] #stock_abbrev
-  
-  tow_data_species[[CN]][[SA]] <- subset(tow_data_wTemp, (COMMON_NAME == CN & SPECIES_ITIS == SI & STOCK_ABBREV == SA))
-  
-  
-}
+# tow_data_species <- list()
+# for(rw in seq(length(S_names$COMMON_NAME))){
+#   
+#   CN = S_names$COMMON_NAME[[rw]] #common name
+#   SI = as.character(S_names$SPECIES_ITIS[[rw]]) #species_itis
+#   SA = S_names$STOCK_ABBREV[[rw]] #stock_abbrev
+#   
+#   tow_data_species[[CN]][[SA]] <- subset(tow_data_wTemp, (COMMON_NAME == CN & SPECIES_ITIS == SI & STOCK_ABBREV == SA))
+#   
+#   
+# }
+# 
+
+#saveRDS(tow_data_species,file="tow_data_species.RDS")
+
+
+tow_data_species <- readRDS("tow_data_species.RDS")
 
 
 #pull out specific tow data set to work with. Will eventually make this a loop
@@ -44,7 +50,7 @@ tow_data <- tow_data_species[[CN]][[SA]]
 
 
 
-for(j in c(6)){
+for(j in c(7)){
   
   # OLD ONES FROM CHUCK ADAMS' PAPER WITH CHRIS AND LIZ
   # if(j == 1) {obsmodel <- c(2, 0); run <- 1}
@@ -123,10 +129,12 @@ settings <- make_settings(n_x = 500,  #NEED ENOUGH KNOTS OR WILL HAVE ISSUES WIT
                           FieldConfig= FC1,
                           RhoConfig = RhoConfig,
                           ObsModel = obsmodel,
-                          knot_method = "samples")
+                          knot_method = "samples",
+                          
+                          Version = "VAST_v14_0_1")
 
 #avoids specific error related to running on server
-settings$Version <- 'VAST_v12_0_0'
+#settings$Version <- 'VAST_v12_0_0'
 
 #covariate formula
 X2_formula = ~ poly(Temp_Est, degree=2 ) 
@@ -144,6 +152,18 @@ fit_spring <- fit_model(settings = settings,
                             X2_formula = X2_formula,
                             covariate_data = covdata_spring,
                             optimize_args=list("lower"=-Inf,"upper"=Inf))
+
+
+#create directory for season specific output
+dir.create(paste(getwd(),"/spring",sep=""))
+setwd(paste(getwd(),"/spring",sep=""))
+
+
+saveRDS(fit_spring,file = paste(getwd(),"/fit_spring.RDS",sep=""))
+
+#  plot_biomass_index(fit_spring)
+
+plot(fit_spring)
 
 
 }
