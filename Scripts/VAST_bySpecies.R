@@ -101,7 +101,7 @@ spring <- tow_data %>%
          Lat = LATITUDE,
          Lon = LONGITUDE) %>%
   mutate(Vessel = "missing",
-         AreaSwept_km2 = 1) #CORRECT AREA SWEPT?
+         AreaSwept_km2 =  0.0112*3.4299) #from Chis C- .0112 nm converted to kilometers^2
 
 
 Strata = unique(tow_data$STRATUM)
