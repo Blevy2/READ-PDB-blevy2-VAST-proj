@@ -166,5 +166,14 @@ saveRDS(fit_spring,file = paste(getwd(),"/fit_spring.RDS",sep=""))
 plot(fit_spring)
 
 
+#add years to index csv
+index_csv = read.csv("Index.csv")
+index_csv$Year = as.numeric(fit_spring$year_labels)
+
+#add season once its in a loop?!?!?!?!
+
+write.csv(index_csv,"Index_wYear.csv")
+
+
 }
 
