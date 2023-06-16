@@ -76,7 +76,9 @@ range(tow_data$CATCH_WT_CAL)
 tow_data_season[["SPRING"]] = subset(tow_data,SEASON=="SPRING")
 tow_data_season[["FALL"]] = subset(tow_data,SEASON=="FALL")
 
+cov.dir <- ifelse(use_cov,"W_Cov","No_Cov")
 
+orig.dir <- getwd()
 
 
 for(season in seasons){
@@ -103,13 +105,18 @@ for(j in obsmodels){
   
   
   #create directory for model specific output
-dir.create(paste(getwd(),"/VAST_runs/",CN,"_",SA,sep=""))
+dir.create(paste(getwd(),"/VAST_runs/",CN,sep=""))
 
-dir.create(paste(getwd(),"/VAST_runs/",CN,"_",SA,"/obsmodel",j,sep=""))
-setwd((paste(getwd(),"/VAST_runs/",CN,"_",SA,"/obsmodel",j,sep="")))
+dir.create(paste(getwd(),"/VAST_runs/",CN,"/",SA,sep=""))
+
+
+dir.create(paste(getwd(),"/VAST_runs/",CN,"/",SA,"/obsmodel",j,sep=""))
+setwd((paste(getwd(),"/VAST_runs/",CN,"/",SA,"/obsmodel",j,sep="")))
   
 
-
+#run model out of seasonal folder
+dir.create(paste(getwd(),"/",season,sep=""))
+setwd(paste(getwd(),"/",season,sep=""))
 
 
 # format for use in VAST
@@ -164,8 +171,10 @@ settings <- make_settings(n_x = 500,  #NEED ENOUGH KNOTS OR WILL HAVE ISSUES WIT
 
 ifelse(use_cov==TRUE,
        
-       #if using covariates
-{covdata <- tow_data_season[[season]][,c("LATITUDE","LONGITUDE","YEAR","Temp_Hub")]
+       #IF USING COVARIATES
+{dir.create(paste(getwd(),"/",cov.dir,sep=""))
+  
+  covdata <- tow_data_season[[season]][,c("LATITUDE","LONGITUDE","YEAR","Temp_Hub")]
 colnames(covdata) <- c("Lat","Lon","Year","Temp_Est")
 #covariate formula
 X2_formula = ~ poly(Temp_Est, degree=2 ) 
@@ -179,10 +188,36 @@ VAST_fit <- fit_model(settings = settings,
                             #   X1_formula = X1_formula,
                             X2_formula = X2_formula,
                             covariate_data = covdata,
-                            optimize_args=list("lower"=-Inf,"upper"=Inf))},
+                            optimize_args=list("lower"=-Inf,"upper"=Inf))
+#set directory to plot there
+setwd(paste(getwd(),"/",cov.dir,sep=""))
 
-#not using covariates
-{VAST_fit <- fit_model(settings = settings,
+#plot covariate response
+print("PLOTTING COVARIATE RESPONSE")
+pdf(file=paste(getwd(),"/_cov_res_",season,".pdf",sep=""))
+fittt = VAST_fit
+covariate_data_full = fittt$effects$covariate_data_full
+catchability_data_full = fittt$effects$catchability_data_full
+
+
+pred = Effect.fit_model( fittt,
+                         focal.predictors = c("Temp_Est"),
+                         which_formula = "X2",
+                         xlevels = 100,
+                         transformation = list(link=identity, inverse=identity) )
+plot(pred)
+
+dev.off()
+
+remove(fittt)
+
+
+},
+
+#NOT USING COVARIATES
+{dir.create(paste(getwd(),cov.dir,sep=""))
+  
+  VAST_fit <- fit_model(settings = settings,
                         "Lat_i"=as.numeric(seasonal_tows[,'Lat']), 
                         "Lon_i"=as.numeric(seasonal_tows[,'Lon']), 
                         "t_i"=as.numeric(seasonal_tows[,'Year']), 
@@ -190,31 +225,44 @@ VAST_fit <- fit_model(settings = settings,
                         "b_i"=as.numeric(seasonal_tows[,'Catch_KG']), 
                         "a_i"=as.numeric(seasonal_tows[,'AreaSwept_km2']),
                       
-                        optimize_args=list("lower"=-Inf,"upper"=Inf))}
-)
+                        optimize_args=list("lower"=-Inf,"upper"=Inf))
+#set directory to plot there
+setwd(paste(getwd(),"/",cov.dir,sep=""))})
 
 
-#create directory for season specific output
-dir.create(paste(getwd(),"/",season,sep=""))
-setwd(paste(getwd(),"/",season,sep=""))
 
 
-saveRDS(VAST_fit,file = paste(getwd(),"/VAST_fit_.RDS",season,sep=""))
+saveRDS(VAST_fit,file = paste(getwd(),"/VAST_fit_.RDS",sep=""))
+
+
+
+file.rename(from= paste(orig.dir,"/VAST_runs/",CN,"/",SA,"/obsmodel",j,"/",season,"/settings.txt",sep="") 
+            ,to =paste(orig.dir,"/VAST_runs/",CN,"/",SA,"/obsmodel",j,"/",season,"/",cov.dir,"/settings.txt",sep=""))
+
+file.rename(from= paste(orig.dir,"/VAST_runs/",CN,"/",SA,"/obsmodel",j,"/",season,"/parameter_estimates.txt",sep="") 
+            ,to =paste(orig.dir,"/VAST_runs/",CN,"/",SA,"/obsmodel",j,"/",season,"/",cov.dir,"/parameter_estimates.txt",sep=""))
+
+file.rename(from= paste(orig.dir,"/VAST_runs/",CN,"/",SA,"/obsmodel",j,"/",season,"/parameter_estimates.RData",sep="") 
+            ,to =paste(orig.dir,"/VAST_runs/",CN,"/",SA,"/obsmodel",j,"/",season,"/",cov.dir,"/parameter_estimates.RData",sep=""))
+
+file.rename(from= paste(orig.dir,"/VAST_runs/",CN,"/",SA,"/obsmodel",j,"/",season,"/packageDescription.txt",sep="") 
+            ,to =paste(orig.dir,"/VAST_runs/",CN,"/",SA,"/obsmodel",j,"/",season,"/",cov.dir,"/packageDescription.txt",sep=""))
+
 
 #  plot_biomass_index(VAST_fit)
 
 plot(VAST_fit)
 
-
-#add years to index csv
+#add years and season to index csv
 index_csv = read.csv("Index.csv")
 index_csv$Year = as.numeric(VAST_fit$year_labels)
-
-#add season once its in a loop?!?!?!?!
-
-write.csv(index_csv,"Index_wYear.csv")
+index_csv$Season = rep(season,length(index_csv$Time))
+index_csv$Covariate = rep(cov.dir,length(index_csv$Time))
 
 
+write.csv(index_csv,"Index_wYearSeason.csv")
+
+remove(VAST_fit)
 }
 }
 }
