@@ -55,6 +55,10 @@ seasons <- c("FALL")
 #use covariates in VAST?
 use_cov <- FALSE
 
+cov.dir <- ifelse(use_cov,"W_Cov","No_Cov")
+
+orig.dir <- getwd()
+
 tow_data_season <- list()
 
 for(CN in common_names){
@@ -75,10 +79,6 @@ range(tow_data$CATCH_WT_CAL)
 
 tow_data_season[["SPRING"]] = subset(tow_data,SEASON=="SPRING")
 tow_data_season[["FALL"]] = subset(tow_data,SEASON=="FALL")
-
-cov.dir <- ifelse(use_cov,"W_Cov","No_Cov")
-
-orig.dir <- getwd()
 
 
 for(season in seasons){
