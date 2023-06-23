@@ -40,17 +40,17 @@ SA = "GBK"
 
 #species names
 common_names <- unique(tow_data_wTemp[c("COMMON_NAME","SPECIES_ITIS","STOCK_ABBREV")])
-common_names <- c("COD,ATLANTIC")
+common_names <- c("HADDOCK")
 
 
 #stock areas 
-stock_areas <- c("GBK")
+stock_areas <- c("GBK","GOM")
 
 #VAST obsmodels to use
 obsmodels <- c(7)
 
 #seasons to run
-seasons <- c("FALL")
+seasons <- c("FALL","SPRING")
 
 #use covariates in VAST?
 use_cov <- FALSE
@@ -215,7 +215,7 @@ remove(fittt)
 },
 
 #NOT USING COVARIATES
-{dir.create(paste(getwd(),cov.dir,sep=""))
+{dir.create(paste(getwd(),"/",cov.dir,sep=""))
   
   VAST_fit <- fit_model(settings = settings,
                         "Lat_i"=as.numeric(seasonal_tows[,'Lat']), 
