@@ -70,7 +70,7 @@ common_names <- c("HADDOCK")
 
 
 #stock areas 
-stock_areas <- c("GOM")
+stock_areas <- c("GOM","GBK")
 
 #VAST obsmodels to use
 obsmodels <- c(7)
@@ -130,10 +130,11 @@ colnames(combos) = c("common_name","stock_area","season","obsmodel")
 library(parallel)
 
 
-nCoresToUse <- 2
+nCoresToUse <- length(combos[,1])
 
 
-cl <- parallel::makeCluster(nCoresToUse) #options from https://stackoverflow.com/questions/41639929/r-cannot-makecluster-multinode-due-to-cannot-open-the-connection-error
+
+cl <- parallel::makeCluster(nCoresToUse,revtunnel = TRUE, outfile = "", verbose = TRUE, master=nsl(Sys.info()['nodename'])) #options from https://stackoverflow.com/questions/41639929/r-cannot-makecluster-multinode-due-to-cannot-open-the-connection-error
 
 
 result <- list()
