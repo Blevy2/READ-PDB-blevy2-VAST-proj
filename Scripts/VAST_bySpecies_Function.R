@@ -107,8 +107,8 @@ run_VAST <-
             example$Region <- "northwest_atlantic"
             example$strata.limits <- data.frame(STRATA = Strata) #THESE ARE COD STRATA
             
-            
-            if(obsmodel ==  c(2, 1)){
+            #obsmodel ==  c(2, 1)
+            if(obsmodel[1] ==  2){
               
                           settings <- make_settings(n_x = KN,  #NEED ENOUGH KNOTS OR WILL HAVE ISSUES WITH PARAMETER FITTING
                                         Region=example$Region,
@@ -124,8 +124,8 @@ run_VAST <-
                                         Version = "VAST_v14_0_1")
             }
             
-            
-            if(obsmodel ==  c(10, 2)){         
+            #obsmodel ==  c(10,2)
+            if(obsmodel[1] ==  10){         
               
             FC1 = c("Omega1" = 0, "Epsilon1" =0, "Omega2" = 1, "Epsilon2" = 1) 
             RhoConfig = c("Beta1" = 3, "Beta2" = 0, "Epsilon1" = 0, "Epsilon2" = 4)
@@ -249,6 +249,33 @@ run_VAST <-
             write.csv(index_csv,"Index_wYearSeason.csv")
             
             remove(VAST_fit)
+            
+            
+            #send an email telling me its done 
+            
+            #note the date
+            date_time <- add_readable_time()
+            
+            #create message
+            email <-
+              compose_email(
+                body = md(glue::glue(
+              paste0("Scenario ",CN," ",SA," ",season," ",j," ",BC," ",KN," ",KM," has finished.")
+              )),
+                footer = md(glue::glue("Email sent on {date_time}."))
+              )
+            
+            
+            
+            # Sending email by SMTP using a credentials file
+            email |>
+              smtp_send(
+                to = "benjamin.levy@noaa.gov",
+                from = "blevy6@gmail.com",
+                subject = "Container run complete",
+                credentials = creds_file("smtp")
+              )
+            
           }
 
 
