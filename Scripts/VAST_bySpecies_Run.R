@@ -73,18 +73,24 @@ common_names <- c("HADDOCK")
 stock_areas <- c("GBK")
 
 #VAST obsmodels to use
-obsmodels <- c(7)
+obsmodels <- c(7,2)
 
 #seasons to run
-seasons <- c("FALL","SPRING")
+seasons <- c("FALL")
 
 #use bias correction in VAST?
-bias_corr <- c("TRUE","FALSE")
+bias_corr <- c("FALSE")
 
 #use covariates in VAST?
 use_cov <- FALSE
 
 cov.dir <- ifelse(use_cov,"W_Cov","No_Cov")
+
+#knot method
+knot_methods = c("samples","grid")
+#knot number
+knots <- c(500,100)
+
 
 orig.dir <- getwd()
 
@@ -114,21 +120,28 @@ for(CN in common_names){
       for(j in obsmodels){
         
         for(BC in bias_corr){
+          
+          for(KN in knots){
+            
+            for(KM in knot_methods){
         
         combos[idx,1] = CN
         combos[idx,2] = SA
         combos[idx,3] = season 
         combos[idx,4] = j
         combos[idx,5] = BC
+        combos[idx,6] = KN
+        combos[idx,7] = KM
         idx=idx+1
-        
+            }
+          }
         }
       }
     }
   }
 }
 
-colnames(combos) = c("common_name","stock_area","season","obsmodel","bias_correct")
+colnames(combos) = c("common_name","stock_area","season","obsmodel","bias_correct","knot_number","knot_method")
 
 
 

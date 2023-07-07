@@ -14,6 +14,8 @@ run_VAST <-
     j=combos[scenario_num,4]
     BC = ifelse(combos[scenario_num,5]==TRUE,"BCY","BCN")
     BC_TF = combos[scenario_num,5]
+    KN = combos[scenario_num,6]
+    KM = combos[scenario_num,7]
     
     #this might track progress. If not check here: https://cran.r-project.org/web/packages/pbapply/pbapply.pdf
     #  system(paste("echo 'now processing: ",common_names,stock_areas,seasons,obsmodels,"'"))
@@ -106,16 +108,31 @@ run_VAST <-
             example$strata.limits <- data.frame(STRATA = Strata) #THESE ARE COD STRATA
             
             
+            if(obsmodel ==  c(2, 1)){
+              
+                          settings <- make_settings(n_x = KN,  #NEED ENOUGH KNOTS OR WILL HAVE ISSUES WITH PARAMETER FITTING
+                                        Region=example$Region,
+                                        purpose="index2",
+                                        strata.limits=example$strata.limits,
+                                        #bias.correct=TRUE,
+                                        #FieldConfig= FC1,
+                                        #RhoConfig = RhoConfig,
+                                        ObsModel = obsmodel,
+                                        knot_method = KM,
+                                        bias.correct = BC_TF,
+                                        
+                                        Version = "VAST_v14_0_1")
+            }
             
             
-            
+            if(obsmodel ==  c(10, 2)){         
+              
             FC1 = c("Omega1" = 0, "Epsilon1" =0, "Omega2" = 1, "Epsilon2" = 1) 
             RhoConfig = c("Beta1" = 3, "Beta2" = 0, "Epsilon1" = 0, "Epsilon2" = 4)
+                  
             
             
-            
-            
-            settings <- make_settings(n_x = 500,  #NEED ENOUGH KNOTS OR WILL HAVE ISSUES WITH PARAMETER FITTING
+            settings <- make_settings(n_x = KN,  #NEED ENOUGH KNOTS OR WILL HAVE ISSUES WITH PARAMETER FITTING
                                       Region=example$Region,
                                       purpose="index2",
                                       strata.limits=example$strata.limits,
@@ -123,10 +140,13 @@ run_VAST <-
                                       FieldConfig= FC1,
                                       RhoConfig = RhoConfig,
                                       ObsModel = obsmodel,
-                                      knot_method = "samples",
+                                      knot_method = KM,
                                       bias.correct = BC_TF,
                                       
-                                      Version = "VAST_v14_0_1")
+                                      Version = "VAST_v14_0_1")}
+            
+
+      
             
             #avoids specific error related to running on server
             #settings$Version <- 'VAST_v12_0_0'
