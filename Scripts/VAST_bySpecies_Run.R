@@ -70,7 +70,7 @@ common_names <- c("HADDOCK")
 
 
 #stock areas 
-stock_areas <- c("GOM","GBK")
+stock_areas <- c("GBK")
 
 #VAST obsmodels to use
 obsmodels <- c(7)
@@ -78,8 +78,11 @@ obsmodels <- c(7)
 #seasons to run
 seasons <- c("FALL","SPRING")
 
+#use bias correction in VAST?
+bias_corr <- c("TRUE","FALSE")
+
 #use covariates in VAST?
-use_cov <- TRUE
+use_cov <- FALSE
 
 cov.dir <- ifelse(use_cov,"W_Cov","No_Cov")
 
@@ -110,18 +113,22 @@ for(CN in common_names){
       
       for(j in obsmodels){
         
+        for(BC in bias_corr){
+        
         combos[idx,1] = CN
         combos[idx,2] = SA
         combos[idx,3] = season 
         combos[idx,4] = j
+        combos[idx,5] = BC
         idx=idx+1
         
+        }
       }
     }
   }
 }
 
-colnames(combos) = c("common_name","stock_area","season","obsmodel")
+colnames(combos) = c("common_name","stock_area","season","obsmodel","bias_correct")
 
 
 
@@ -142,10 +149,13 @@ result <- list()
 number_scenarios <- length(combos[,1])
 
 #varlist are variables to make available to each node
-parallel::clusterExport(cl, varlist= c("combos","tow_data_species","tow_data_season","use_cov","cov.dir"),envir = .GlobalEnv)
+parallel::clusterExport(cl, varlist= c("combos","tow_data_species","tow_data_season","use_cov","cov.dir","bias_corr"),envir = .GlobalEnv)
 
 
 result <- parallel::parLapply(cl,1:number_scenarios,run_VAST)
+
+result <- parallel::parLapply(cl,1:number_scenarios,run_VAST_TEST)#for testing
+
 parallel::stopCluster(cl)
 
 

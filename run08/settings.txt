@@ -1,0 +1,73 @@
+$Version
+[1] "VAST_v14_0_1"
+
+$n_x
+[1] 100
+
+$Region
+[1] "Northwest_Atlantic"
+
+$strata.limits
+$strata.limits[[1]]
+ [1] 1010 1020 1060 1080 1090 1110 1130 1140 1160 1170 1200 1220 1240 1270 1280
+[16] 1290 1300 1351 1360 1380 1660 1700 1740 3080 3410 3610 1030 1100 1230 1370
+[31] 1390 1620 1630 1650 1690 1710 1730 3050 3260 3440 3460 3560 3590 1040 1050
+[46] 1190 1210 1260 1340 3020 3110 3140 1720 1760 3380 3650 1070 1120 1610 1640
+[61] 1670 1750 3170 3350 3640 3450 3600 1400 3200 3230 3290 3660 3320 1180 1150
+[76] 1250 1680
+
+
+$zone
+[1] NA
+
+$FieldConfig
+        Component_1 Component_2
+Omega   "IID"       "IID"      
+Epsilon "IID"       "IID"      
+Beta    "IID"       "IID"      
+
+$RhoConfig
+   Beta1    Beta2 Epsilon1 Epsilon2 
+       0        0        0        0 
+
+$VamConfig
+Method   Rank Timing 
+     0      0      0 
+
+$OverdispersionConfig
+Eta1 Eta2 
+   0    0 
+
+$ObsModel
+[1] 2 1
+
+$vars_to_correct
+[1] "Index_cyl" "Index_ctl"
+
+$Options
+           Calculate_Range   Calculate_effective_area 
+                      TRUE                       TRUE 
+treat_nonencounter_as_zero 
+                      TRUE 
+
+$grid_size_km
+[1] 25
+
+$max_cells
+[1] 2000
+
+$knot_method
+[1] "grid"
+
+$Method
+[1] "Mesh"
+
+$use_anisotropy
+[1] TRUE
+
+$fine_scale
+[1] TRUE
+
+$bias.correct
+[1] TRUE
+
