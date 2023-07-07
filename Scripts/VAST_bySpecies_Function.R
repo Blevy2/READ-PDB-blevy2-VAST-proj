@@ -72,19 +72,12 @@ run_VAST <-
             setwd(orig.dir)
             
             #create directory for model specific output
-            dir.create(paste(getwd(),"/VAST_runs/",CN,sep=""))
-            
-            dir.create(paste(getwd(),"/VAST_runs/",CN,"/",SA,sep=""))
-            
-            
-            dir.create(paste(getwd(),"/VAST_runs/",CN,"/",SA,"/obsmodel",j,sep=""))
-            setwd((paste(getwd(),"/VAST_runs/",CN,"/",SA,"/obsmodel",j,sep="")))
+ 
+            dir.create(file.path(paste0(getwd(),"/VAST_runs/",CN,"/",SA,"/obsmodel",j,"/",season)),recursive = TRUE)
+            setwd(paste0(getwd(),"/VAST_runs/",CN,"/",SA,"/obsmodel",j,"/",season))
             
             
-            #run model out of seasonal folder
-            dir.create(paste(getwd(),"/",season,sep=""))
-            setwd(paste(getwd(),"/",season,sep=""))
-            
+
             
             # format for use in VAST
             seasonal_tows <- tow_data_season[[season]] %>%
@@ -106,6 +99,19 @@ run_VAST <-
             example <- list(seasonal_tows)
             example$Region <- "northwest_atlantic"
             example$strata.limits <- data.frame(STRATA = Strata) #THESE ARE COD STRATA
+            
+            
+            #directory name to create 
+            d_name = paste(getwd(),"/",cov.dir,"/BC_",BC,"/KN_",KN,"/",KM,sep="")
+            dir.create(file.path(d_name),recursive = TRUE)
+            
+            #run model out of seasonal folder
+            #setwd(paste0(getwd(),"/VAST_runs/",CN,"/",SA,"/obsmodel",j,"/",season))
+            
+            #run out of lowest level folder
+            setwd(d_name)
+            
+            
             
             #obsmodel ==  c(2, 1)
             if(obsmodel[1] ==  2){
@@ -131,7 +137,6 @@ run_VAST <-
             RhoConfig = c("Beta1" = 3, "Beta2" = 0, "Epsilon1" = 0, "Epsilon2" = 4)
                   
             
-            
             settings <- make_settings(n_x = KN,  #NEED ENOUGH KNOTS OR WILL HAVE ISSUES WITH PARAMETER FITTING
                                       Region=example$Region,
                                       purpose="index2",
@@ -146,19 +151,18 @@ run_VAST <-
                                       Version = "VAST_v14_0_1")}
             
 
-      
+    
             
             #avoids specific error related to running on server
             #settings$Version <- 'VAST_v12_0_0'
             
-            
-            
-            
+
             
             ifelse(use_cov==TRUE,
                    
                    #IF USING COVARIATES
-                   {dir.create(paste(getwd(),"/",cov.dir,BC,KN,KMsep=""))
+                   { 
+                     
                      
                      covdata <- tow_data_season[[season]][,c("LATITUDE","LONGITUDE","YEAR","Temp_Hub")]
                      colnames(covdata) <- c("Lat","Lon","Year","Temp_Est")
@@ -175,8 +179,11 @@ run_VAST <-
                                            X2_formula = X2_formula,
                                            covariate_data = covdata,
                                            optimize_args=list("lower"=-Inf,"upper"=Inf))
+                     
+                     #grab directory where 2 knot files will be 
+                     run_directory = getwd()
                      #set directory to plot there
-                     setwd(paste(getwd(),"/",cov.dir,BC,KN,KM,sep=""))
+                     setwd(d_name)
                      
                      #plot covariate response
                      # print("PLOTTING COVARIATE RESPONSE")
@@ -201,7 +208,7 @@ run_VAST <-
                    },
                    
                    #NOT USING COVARIATES
-                   {dir.create(paste(getwd(),"/",cov.dir,BC,KN,KM,sep=""))
+                   { 
                      
                      VAST_fit <- fit_model(settings = settings,
                                            "Lat_i"=as.numeric(seasonal_tows[,'Lat']), 
@@ -212,28 +219,31 @@ run_VAST <-
                                            "a_i"=as.numeric(seasonal_tows[,'AreaSwept_km2']),
                                            
                                            optimize_args=list("lower"=-Inf,"upper"=Inf))
+                     
+                     #grab directory where 2 knot files and settings file will be 
+                     run_directory = getwd()
+                     
                      #set directory to plot there
-                     setwd(paste(getwd(),"/",cov.dir,BC,KN,KM,sep=""))})
+                     setwd(d_name)})
             
             
             
             
-            saveRDS(VAST_fit,file = paste(getwd(),"/VAST_fit_.RDS",sep=""))
+            saveRDS(VAST_fit,file = paste(d_name,"/VAST_fit_.RDS",sep=""))
             
-            
-            
-            file.rename(from= paste(orig.dir,"/VAST_runs/",CN,"/",SA,"/obsmodel",j,"/",season,"/settings.txt",sep="") 
-                        ,to =paste(orig.dir,"/VAST_runs/",CN,"/",SA,"/obsmodel",j,"/",season,"/",cov.dir,BC,KN,KM,"/settings.txt",sep=""))
-            
-            file.rename(from= paste(orig.dir,"/VAST_runs/",CN,"/",SA,"/obsmodel",j,"/",season,"/parameter_estimates.txt",sep="") 
-                        ,to =paste(orig.dir,"/VAST_runs/",CN,"/",SA,"/obsmodel",j,"/",season,"/",cov.dir,BC,KN,KM,"/parameter_estimates.txt",sep=""))
-            
-            file.rename(from= paste(orig.dir,"/VAST_runs/",CN,"/",SA,"/obsmodel",j,"/",season,"/parameter_estimates.RData",sep="") 
-                        ,to =paste(orig.dir,"/VAST_runs/",CN,"/",SA,"/obsmodel",j,"/",season,"/",cov.dir,BC,KN,KM,"/parameter_estimates.RData",sep=""))
-            
-            file.rename(from= paste(orig.dir,"/VAST_runs/",CN,"/",SA,"/obsmodel",j,"/",season,"/packageDescription.txt",sep="") 
-                        ,to =paste(orig.dir,"/VAST_runs/",CN,"/",SA,"/obsmodel",j,"/",season,"/",cov.dir,BC,KN,KM,"/packageDescription.txt",sep=""))
-            
+            #shouldnt need this as is
+            # file.rename(from= paste0(run_directory,"/settings.txt") 
+            #             ,to =paste(d_name,"/settings.txt",sep=""))
+            # 
+            # file.rename(from= paste(run_directory,"/parameter_estimates.txt",sep="") 
+            #             ,to =paste(d_name,"/parameter_estimates.txt",sep=""))
+            # 
+            # file.rename(from= paste(run_directory,"/parameter_estimates.RData",sep="") 
+            #             ,to =paste(d_name,"/parameter_estimates.RData",sep=""))
+            # 
+            # file.rename(from= paste(run_directory,"/packageDescription.txt",sep="") 
+            #             ,to =paste(d_name,"/packageDescription.txt",sep=""))
+            # 
             
             #  plot_biomass_index(VAST_fit)
             
