@@ -158,7 +158,7 @@ run_VAST <-
             ifelse(use_cov==TRUE,
                    
                    #IF USING COVARIATES
-                   {dir.create(paste(getwd(),"/",cov.dir,BC,sep=""))
+                   {dir.create(paste(getwd(),"/",cov.dir,BC,KN,KMsep=""))
                      
                      covdata <- tow_data_season[[season]][,c("LATITUDE","LONGITUDE","YEAR","Temp_Hub")]
                      colnames(covdata) <- c("Lat","Lon","Year","Temp_Est")
@@ -176,7 +176,7 @@ run_VAST <-
                                            covariate_data = covdata,
                                            optimize_args=list("lower"=-Inf,"upper"=Inf))
                      #set directory to plot there
-                     setwd(paste(getwd(),"/",cov.dir,BC,sep=""))
+                     setwd(paste(getwd(),"/",cov.dir,BC,KN,KM,sep=""))
                      
                      #plot covariate response
                      # print("PLOTTING COVARIATE RESPONSE")
@@ -201,7 +201,7 @@ run_VAST <-
                    },
                    
                    #NOT USING COVARIATES
-                   {dir.create(paste(getwd(),"/",cov.dir,BC,sep=""))
+                   {dir.create(paste(getwd(),"/",cov.dir,BC,KN,KM,sep=""))
                      
                      VAST_fit <- fit_model(settings = settings,
                                            "Lat_i"=as.numeric(seasonal_tows[,'Lat']), 
@@ -213,7 +213,7 @@ run_VAST <-
                                            
                                            optimize_args=list("lower"=-Inf,"upper"=Inf))
                      #set directory to plot there
-                     setwd(paste(getwd(),"/",cov.dir,BC,sep=""))})
+                     setwd(paste(getwd(),"/",cov.dir,BC,KN,KM,sep=""))})
             
             
             
@@ -223,16 +223,16 @@ run_VAST <-
             
             
             file.rename(from= paste(orig.dir,"/VAST_runs/",CN,"/",SA,"/obsmodel",j,"/",season,"/settings.txt",sep="") 
-                        ,to =paste(orig.dir,"/VAST_runs/",CN,"/",SA,"/obsmodel",j,"/",season,"/",cov.dir,BC,"/settings.txt",sep=""))
+                        ,to =paste(orig.dir,"/VAST_runs/",CN,"/",SA,"/obsmodel",j,"/",season,"/",cov.dir,BC,KN,KM,"/settings.txt",sep=""))
             
             file.rename(from= paste(orig.dir,"/VAST_runs/",CN,"/",SA,"/obsmodel",j,"/",season,"/parameter_estimates.txt",sep="") 
-                        ,to =paste(orig.dir,"/VAST_runs/",CN,"/",SA,"/obsmodel",j,"/",season,"/",cov.dir,BC,"/parameter_estimates.txt",sep=""))
+                        ,to =paste(orig.dir,"/VAST_runs/",CN,"/",SA,"/obsmodel",j,"/",season,"/",cov.dir,BC,KN,KM,"/parameter_estimates.txt",sep=""))
             
             file.rename(from= paste(orig.dir,"/VAST_runs/",CN,"/",SA,"/obsmodel",j,"/",season,"/parameter_estimates.RData",sep="") 
-                        ,to =paste(orig.dir,"/VAST_runs/",CN,"/",SA,"/obsmodel",j,"/",season,"/",cov.dir,BC,"/parameter_estimates.RData",sep=""))
+                        ,to =paste(orig.dir,"/VAST_runs/",CN,"/",SA,"/obsmodel",j,"/",season,"/",cov.dir,BC,KN,KM,"/parameter_estimates.RData",sep=""))
             
             file.rename(from= paste(orig.dir,"/VAST_runs/",CN,"/",SA,"/obsmodel",j,"/",season,"/packageDescription.txt",sep="") 
-                        ,to =paste(orig.dir,"/VAST_runs/",CN,"/",SA,"/obsmodel",j,"/",season,"/",cov.dir,BC,"/packageDescription.txt",sep=""))
+                        ,to =paste(orig.dir,"/VAST_runs/",CN,"/",SA,"/obsmodel",j,"/",season,"/",cov.dir,BC,KN,KM,"/packageDescription.txt",sep=""))
             
             
             #  plot_biomass_index(VAST_fit)
