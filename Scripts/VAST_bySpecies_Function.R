@@ -66,6 +66,8 @@ run_VAST <-
       NYrs_F = length(unique(tow_data_season$FALL$YEAR))
       
       KN = round(mean(c(NTows_S/NYrs_S,NTows_F/NYrs_F),na.rm = T))
+      
+      KN = max(100,KN)
     }
       
             
