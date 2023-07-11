@@ -22,16 +22,20 @@ source("Scripts/fn_srs_survey_BENS.R")
 strata_data <- read.csv("Data/strata_area.csv")
 
 
-tow_data_species <- readRDS("tow_data_species.RDS")
-
+#tow_data_species <- readRDS("tow_data_species.RDS")
+common_names <- readRDS("Data/common_names_stocks.RDS")
 
 #pull out specific tow data set to work with. Will eventually make this a loop
 
 strat_mean_species <- list()
 
 
-for(species in names(tow_data_species)){
-for(unitt in names(tow_data_species[[species]])){
+for(species in common_names$COMMON_NAME){
+  
+  tempp = subset(common_names,COMMON_NAME==species)
+  stock_names = tempp$STOCK_ABBREV
+  
+for(unitt in stock_names){
 
 tow_data <- tow_data_species[[species]][[unitt]]
 

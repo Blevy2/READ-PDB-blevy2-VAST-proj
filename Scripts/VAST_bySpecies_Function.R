@@ -5,8 +5,10 @@
 #setup function to run in parrallel
 run_VAST <- 
   function(scenario_num){
+
     
-    
+    #leave artifact to check whether vast_fit was created
+    VAST_fit <- scenario_num
     
     CN=combos[scenario_num,1]
     SA=combos[scenario_num,2]
@@ -23,6 +25,10 @@ run_VAST <-
     library(dplyr)
     orig.dir <- getwd()
     
+    
+    
+   # print(orig.dir)
+    
     #read in new make_extrapolation_info script to avoid if() error in R 4.2.3
     
     #1: load file
@@ -36,6 +42,7 @@ run_VAST <-
     
         
         tow_data <- tow_data_species[[CN]][[SA]]
+        if(length(tow_data[,1])==0){print(paste0("stopped become of " ,CN,SA,season,j,BC))}
         #use only Temp_Hub values to start
         tow_data = subset(tow_data,!is.na(Temp_Hub))
         
@@ -50,10 +57,19 @@ run_VAST <-
         tow_data_season[["SPRING"]] = subset(tow_data,SEASON=="SPRING")
         tow_data_season[["FALL"]] = subset(tow_data,SEASON=="FALL")
         
-    
+        #if using number of samples based on number of tows, extract number of tows
+    if(KN=="N_Samp"){
+      NTows_S = length(unique(tow_data_season$SPRING$TOWDATE))
+      NYrs_S = length(unique(tow_data_season$SPRING$YEAR))
+      
+      NTows_F = length(unique(tow_data_season$FALL$TOWDATE))
+      NYrs_F = length(unique(tow_data_season$FALL$YEAR))
+      
+      KN = round(mean(c(NTows_S/NYrs_S,NTows_F/NYrs_F),na.rm = T))
+    }
+      
             
-            print(paste0(c(CN,SA,season,j,BC)))
-            
+        
             # OLD ONES FROM CHUCK ADAMS' PAPER WITH CHRIS AND LIZ
             # if(j == 1) {obsmodel <- c(2, 0); run <- 1}
             # if(j == 2) {obsmodel <- c(2, 1); run <- 3} #model selection
@@ -77,7 +93,7 @@ run_VAST <-
             setwd(paste0(getwd(),"/VAST_runs/",CN,"/",SA,"/obsmodel",j,"/",season))
             
             
-
+if(length(tow_data_season[[season]][,1])>0){
             
             # format for use in VAST
             seasonal_tows <- tow_data_season[[season]] %>%
@@ -94,13 +110,13 @@ run_VAST <-
             
             
             Strata = unique(seasonal_tows$Stratum)
-            
+  
             
             example <- list(seasonal_tows)
             example$Region <- "northwest_atlantic"
             example$strata.limits <- data.frame(STRATA = Strata) #THESE ARE COD STRATA
             
-            
+          
             #directory name to create 
             d_name = paste(getwd(),"/",cov.dir,"/BC_",BC,"/KN_",KN,"/",KM,sep="")
             dir.create(file.path(d_name),recursive = TRUE)
@@ -111,8 +127,18 @@ run_VAST <-
             #run out of lowest level folder
             setwd(d_name)
             
+              #check to see whether vast fit already exists
+            checkk=scenario_num
+           # print(class(checkk))
+            # tryCatch({
+            #   (checkk <- read.csv("Index_wYearSeason.csv"))
+            # })
             
-            
+            #only continue if vast fit doesnt already exist
+            if(class(checkk)=="integer"){
+              
+              print(paste0(c(CN,SA,season,j,BC)))
+              
             #obsmodel ==  c(2, 1)
             if(obsmodel[1] ==  2){
               
@@ -155,8 +181,7 @@ run_VAST <-
             
             #avoids specific error related to running on server
             #settings$Version <- 'VAST_v12_0_0'
-            
-
+   
             
             ifelse(use_cov==TRUE,
                    
@@ -168,6 +193,7 @@ run_VAST <-
                      colnames(covdata) <- c("Lat","Lon","Year","Temp_Est")
                      #covariate formula
                      X2_formula = ~ poly(Temp_Est, degree=2 ) 
+                     try(
                      VAST_fit <- fit_model(settings = settings,
                                            "Lat_i"=as.numeric(seasonal_tows[,'Lat']), 
                                            "Lon_i"=as.numeric(seasonal_tows[,'Lon']), 
@@ -179,7 +205,7 @@ run_VAST <-
                                            X2_formula = X2_formula,
                                            covariate_data = covdata,
                                            optimize_args=list("lower"=-Inf,"upper"=Inf))
-                     
+                     )
                      #grab directory where 2 knot files will be 
                      run_directory = getwd()
                      #set directory to plot there
@@ -209,7 +235,7 @@ run_VAST <-
                    
                    #NOT USING COVARIATES
                    { 
-                     
+                     try(
                      VAST_fit <- fit_model(settings = settings,
                                            "Lat_i"=as.numeric(seasonal_tows[,'Lat']), 
                                            "Lon_i"=as.numeric(seasonal_tows[,'Lon']), 
@@ -219,7 +245,7 @@ run_VAST <-
                                            "a_i"=as.numeric(seasonal_tows[,'AreaSwept_km2']),
                                            
                                            optimize_args=list("lower"=-Inf,"upper"=Inf))
-                     
+                     )
                      #grab directory where 2 knot files and settings file will be 
                      run_directory = getwd()
                      
@@ -258,33 +284,78 @@ run_VAST <-
             
             write.csv(index_csv,"Index_wYearSeason.csv")
             
-            remove(VAST_fit)
             
-            
-            #send an email telling me its done 
-            
+          
+}
+}
+            #send an email telling me its done
+            library(blastula)
+
+          setwd(orig.dir)
+
             #note the date
             date_time <- add_readable_time()
-            
-            #create message
-            email <-
-              compose_email(
-                body = md(glue::glue(
-              paste0("Scenario ",CN," ",SA," ",season," ",j," ",BC," ",KN," ",KM," has finished.")
-              )),
-                footer = md(glue::glue("Email sent on {date_time}."))
-              )
-            
-            
-            
-            # Sending email by SMTP using a credentials file
+
+
+         #create message if it doesnt work
+          if(class(VAST_fit)=="integer"){
+
+                 email <-
+                   compose_email(
+                     body = md(glue::glue(
+                       paste0(scenario_num," Scenario ",CN," ",SA," ",season," ",j," ",BC," ",KN," ",KM," failed.")
+                     )),
+                     footer = md(glue::glue("Email sent on {date_time}."))
+                   )
+
+                    # Sending email by SMTP using a credentials file
             email |>
               smtp_send(
                 to = "benjamin.levy@noaa.gov",
                 from = "blevy6@gmail.com",
-                subject = "Container run complete",
+                subject = "Container run failed",
                 credentials = creds_file("smtp")
               )
+
+          }
+
+
+
+
+            #create message if it does work
+            if(class(VAST_fit)!="integer"){
+
+              email <-
+                compose_email(
+                  body = md(glue::glue(
+                    paste0(scenario_num," Scenario ",CN," ",SA," ",season," ",j," ",BC," ",KN," ",KM," has finished.")
+                  )),
+                  footer = md(glue::glue("Email sent on {date_time}."))
+                )
+
+              # Sending email by SMTP using a credentials file
+              email |>
+                smtp_send(
+                  to = "benjamin.levy@noaa.gov",
+                  from = "blevy6@gmail.com",
+                  subject = "Container run complete",
+                  credentials = creds_file("smtp")
+                )
+
+            }
+
+
+
+
+
+            
+            
+            remove(VAST_fit)
+            
+            
+         #   rm(list = ls())
+            
+            # .rs.restartR()
             
           }
 
