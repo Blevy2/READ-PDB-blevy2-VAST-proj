@@ -243,7 +243,7 @@ source("Scripts/VAST_bySpecies_Function.R") #my edited version that skips most t
 
 
 nCoresToUse <- length(combos[,1])
-nCoresToUse <- 10
+nCoresToUse <- 18
 
 
 cl <- parallel::makeCluster(nCoresToUse,revtunnel = TRUE, outfile = "", verbose = TRUE, master=nsl(Sys.info()['nodename'])) #options from https://stackoverflow.com/questions/41639929/r-cannot-makecluster-multinode-due-to-cannot-open-the-connection-error
@@ -256,12 +256,44 @@ number_scenarios <- length(combos[,1])
 #varlist are variables to make available to each node
 parallel::clusterExport(cl, varlist= c("combos","tow_data_species","tow_data_season","use_cov","cov.dir","bias_corr"),envir = .GlobalEnv)
 
+result <- list()
 
-result <- parallel::parLapply(cl,1:number_scenarios,run_VAST)
+result <- parallel::parLapply(cl,as.numeric(not_start_not_finish$scenario_number),run_VAST)
 
 result <- parallel::parLapply(cl,1:number_scenarios,run_VAST_TEST)#for testing
 
 parallel::stopCluster(cl)
 
+
+
+
+
+ #send an email telling me its done
+library(blastula)
+
+setwd(orig.dir)
+
+#note the date
+date_time <- add_readable_time()
+
+
+  email <-
+    compose_email(
+      body = md(glue::glue(
+      
+        "ALL ARE DONE"
+      )),
+      footer = md(glue::glue("Email sent on {date_time}."))
+    )
+  
+  # Sending email by SMTP using a credentials file
+  email |>
+    smtp_send(
+      to = "benjamin.levy@noaa.gov",
+      from = "blevy6@gmail.com",
+      subject = "ALL ARE DONE",
+      credentials = creds_file("smtp")
+    )
+  
 
 

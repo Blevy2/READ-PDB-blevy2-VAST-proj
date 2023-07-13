@@ -6,10 +6,24 @@
 run_VAST <- 
   function(scenario_num){
 
+    #for flagging issues
+    fail_reason = "N/A"
     
     #leave artifact to check whether vast_fit was created
-    VAST_fit <- scenario_num
+    VAST_fail_reason <- "N/A"
+    VAST_fit = scenario_num
     
+    #if running manually using start_not_finished data table
+    CN=combos[scenario_num,1]
+    SA=combos[scenario_num,2]
+    season=combos[scenario_num,3]
+    j=combos[scenario_num,4]
+    BC = ifelse(combos[scenario_num,5]==TRUE,"BCY","BCN")
+    BC_TF = combos[scenario_num,5]
+    KN = combos[scenario_num,6]
+    KM = combos[scenario_num,7]
+
+    #if running automated using combos    
     CN=combos[scenario_num,1]
     SA=combos[scenario_num,2]
     season=combos[scenario_num,3]
@@ -26,7 +40,7 @@ run_VAST <-
     orig.dir <- getwd()
     
     
-    
+   # print(getwd())
    # print(orig.dir)
     
     #read in new make_extrapolation_info script to avoid if() error in R 4.2.3
@@ -52,24 +66,26 @@ run_VAST <-
         #replace NA weight values with 0
         tow_data[is.na(tow_data[,"CATCH_WT_CAL"]),"CATCH_WT_CAL"]=0
         range(tow_data$CATCH_WT_CAL)
+        #if(season=="FALL"){tow_data_season = subset(tow_data,SEASON=="FALL")}
         
-        
-        tow_data_season[["SPRING"]] = subset(tow_data,SEASON=="SPRING")
-        tow_data_season[["FALL"]] = subset(tow_data,SEASON=="FALL")
+        #print(tow_data_season)
+         FALLL = subset(tow_data,SEASON=="FALL")
+         SPRINGG = subset(tow_data,SEASON=="SPRING")
+        seasonnn=subset(tow_data,SEASON==season)
         
         #if using number of samples based on number of tows, extract number of tows
     if(KN=="N_Samp"){
-      NTows_S = length(unique(tow_data_season$SPRING$TOWDATE))
-      NYrs_S = length(unique(tow_data_season$SPRING$YEAR))
-      
-      NTows_F = length(unique(tow_data_season$FALL$TOWDATE))
-      NYrs_F = length(unique(tow_data_season$FALL$YEAR))
-      
+      NTows_S = length(unique(SPRINGG$TOWDATE))
+      NYrs_S = length(unique(SPRINGG$YEAR))
+
+      NTows_F = length(unique(FALLL$TOWDATE))
+      NYrs_F = length(unique(FALLL$YEAR))
+
       KN = round(mean(c(NTows_S/NYrs_S,NTows_F/NYrs_F),na.rm = T))
-      
+
       KN = max(100,KN)
     }
-      
+
             
         
             # OLD ONES FROM CHUCK ADAMS' PAPER WITH CHRIS AND LIZ
@@ -93,12 +109,18 @@ run_VAST <-
  
             dir.create(file.path(paste0(getwd(),"/VAST_runs/",CN,"/",SA,"/obsmodel",j,"/",season)),recursive = TRUE)
             setwd(paste0(getwd(),"/VAST_runs/",CN,"/",SA,"/obsmodel",j,"/",season))
+
+ #if no seasonal data, flag it for email and result
+            # print(nrow(FALLL))
+
+print(nrow(seasonnn))
+if(nrow(seasonnn)==0){fail_reason = "No seasonal data"}
             
             
-if(length(tow_data_season[[season]][,1])>0){
+if(nrow(seasonnn)>0){
             
             # format for use in VAST
-            seasonal_tows <- tow_data_season[[season]] %>%
+            seasonal_tows <- seasonnn %>%
               #filter(SEASON == as.character(season)) %>%
               # filter(YEAR >= 2009) %>%
               mutate(mycatch = CATCH_WT_CAL) %>%
@@ -131,13 +153,16 @@ if(length(tow_data_season[[season]][,1])>0){
             
               #check to see whether vast fit already exists
             checkk=scenario_num
-           # print(class(checkk))
-            # tryCatch({
-            #   (checkk <- read.csv("Index_wYearSeason.csv"))
-            # })
+           #print(class(checkk))
+           try({
+             (checkk <- read.csv("Index_wYearSeason.csv"))
+           })       
+            
+            #if already a file, change vast_fail_reason
+            if(!(class(checkk)%in%c("integer","numeric"))){VAST_fail_reason = "Exists" }
             
             #only continue if vast fit doesnt already exist
-            if(class(checkk)=="integer"){
+            if(class(checkk)%in%c("integer","numeric")){
               
               print(paste0(c(CN,SA,season,j,BC)))
               
@@ -191,7 +216,7 @@ if(length(tow_data_season[[season]][,1])>0){
                    { 
                      
                      
-                     covdata <- tow_data_season[[season]][,c("LATITUDE","LONGITUDE","YEAR","Temp_Hub")]
+                     covdata <- seasonnn[,c("LATITUDE","LONGITUDE","YEAR","Temp_Hub")]
                      colnames(covdata) <- c("Lat","Lon","Year","Temp_Est")
                      #covariate formula
                      X2_formula = ~ poly(Temp_Est, degree=2 ) 
@@ -300,55 +325,57 @@ if(length(tow_data_season[[season]][,1])>0){
 
 
          #create message if it doesnt work
-          if(class(VAST_fit)=="integer"){
+          if(class(VAST_fail_reason)=="character"){
 
-                 email <-
-                   compose_email(
-                     body = md(glue::glue(
-                       paste0(scenario_num," Scenario ",CN," ",SA," ",season," ",j," ",BC," ",KN," ",KM," failed.")
-                     )),
-                     footer = md(glue::glue("Email sent on {date_time}."))
-                   )
+            #      email <-
+            #        compose_email(
+            #          body = md(glue::glue(
+            #            paste0(scenario_num," Scenario ",CN," ",SA," ",season," ",j," ",BC," ",KN," ",KM," fail reason ",fail_reason,"VAST fail ", VAST_fail_reason)
+            #          )),
+            #          footer = md(glue::glue("Email sent on {date_time}."))
+            #        )
+            # 
+            #         # Sending email by SMTP using a credentials file
+            # email |>
+            #   smtp_send(
+            #     to = "benjamin.levy@noaa.gov",
+            #     from = "blevy6@gmail.com",
+            #     subject = "Container run failed",
+            #     credentials = creds_file("smtp")
+            #   )
 
-                    # Sending email by SMTP using a credentials file
-            email |>
-              smtp_send(
-                to = "benjamin.levy@noaa.gov",
-                from = "blevy6@gmail.com",
-                subject = "Container run failed",
-                credentials = creds_file("smtp")
-              )
-
+            finished_run = c("YES",fail_reason, VAST_fail_reason)
           }
 
 
 
 
             #create message if it does work
-            if(class(VAST_fit)!="integer"){
+            if(!(class(VAST_fit) %in% c("integer","numeric"))){
 
-              email <-
-                compose_email(
-                  body = md(glue::glue(
-                    paste0(scenario_num," Scenario ",CN," ",SA," ",season," ",j," ",BC," ",KN," ",KM," has finished.")
-                  )),
-                  footer = md(glue::glue("Email sent on {date_time}."))
-                )
-
-              # Sending email by SMTP using a credentials file
-              email |>
-                smtp_send(
-                  to = "benjamin.levy@noaa.gov",
-                  from = "blevy6@gmail.com",
-                  subject = "Container run complete",
-                  credentials = creds_file("smtp")
-                )
-
+              # email <-
+              #   compose_email(
+              #     body = md(glue::glue(
+              #       paste0(scenario_num," Scenario ",CN," ",SA," ",season," ",j," ",BC," ",KN," ",KM,fail_reason,"VAST fail ", VAST_fail_reason)
+              #     )),
+              #     footer = md(glue::glue("Email sent on {date_time}."))
+              #   )
+              # 
+              # # Sending email by SMTP using a credentials file
+              # email |>
+              #   smtp_send(
+              #     to = "benjamin.levy@noaa.gov",
+              #     from = "blevy6@gmail.com",
+              #     subject = "Container run complete",
+              #     credentials = creds_file("smtp")
+              #   )
+              finished_run = c("No",fail_reason, VAST_fail_reason)
             }
 
 
 
-
+    return(list(scenario =  paste0(scenario_num," Scenario ",CN," ",SA," ",season," ",j," ",BC," ",KN," ",KM),outcome=finished_run,knots=KN,errors=traceback()))
+        
 
             
             
@@ -358,6 +385,9 @@ if(length(tow_data_season[[season]][,1])>0){
          #   rm(list = ls())
             
             # .rs.restartR()
+            
+            
+
             
           }
 
