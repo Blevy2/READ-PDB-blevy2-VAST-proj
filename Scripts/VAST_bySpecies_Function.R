@@ -6,6 +6,7 @@
 run_VAST <- 
   function(scenario_num){
 
+    
     #for flagging issues
     fail_reason = "N/A"
     
@@ -13,17 +14,6 @@ run_VAST <-
     VAST_fail_reason <- "N/A"
     VAST_fit = scenario_num
     
-    #if running manually using start_not_finished data table
-    CN=combos[scenario_num,1]
-    SA=combos[scenario_num,2]
-    season=combos[scenario_num,3]
-    j=combos[scenario_num,4]
-    BC = ifelse(combos[scenario_num,5]==TRUE,"BCY","BCN")
-    BC_TF = combos[scenario_num,5]
-    KN = combos[scenario_num,6]
-    KM = combos[scenario_num,7]
-
-    #if running automated using combos    
     CN=combos[scenario_num,1]
     SA=combos[scenario_num,2]
     season=combos[scenario_num,3]
@@ -37,12 +27,12 @@ run_VAST <-
     #  system(paste("echo 'now processing: ",common_names,stock_areas,seasons,obsmodels,"'"))
     library(VAST)
     library(dplyr)
-    orig.dir <- getwd()
+    #orig.dir <- getwd()
     
-    
+    #print(orig.dir)
    # print(getwd())
    # print(orig.dir)
-    
+    setwd(orig.dir)
     #read in new make_extrapolation_info script to avoid if() error in R 4.2.3
     
     #1: load file
@@ -52,6 +42,14 @@ run_VAST <-
     #3: replace make_extrapolation_info with make_extrapolation_info_BENS in the VAST package
     assignInNamespace("Prepare_NWA_Extrapolation_Data_Fn", Prepare_NWA_Extrapolation_Data_Fn_BENS, ns = "FishStatsUtils")
     
+    #read in new check_fit script to save any values converging to 0
+    
+    #1: load file
+    source("Scripts/check_fit_BENS.R") #my edited version that skips most things
+    #2: allow the function to call other hidden functions from FishStatsUtils
+    environment(check_fit_BENS) <- asNamespace('VAST')
+    #3: replace make_extrapolation_info with make_extrapolation_info_BENS in the VAST package
+    assignInNamespace("check_fit", check_fit_BENS, ns = "VAST")
     
     
         
@@ -114,7 +112,8 @@ run_VAST <-
             # print(nrow(FALLL))
 
 print(nrow(seasonnn))
-if(nrow(seasonnn)==0){fail_reason = "No seasonal data"}
+if(nrow(seasonnn)==0){fail_reason = "No seasonal data"
+                      setwd(orig.dir)}
             
             
 if(nrow(seasonnn)>0){
@@ -220,7 +219,7 @@ if(nrow(seasonnn)>0){
                      colnames(covdata) <- c("Lat","Lon","Year","Temp_Est")
                      #covariate formula
                      X2_formula = ~ poly(Temp_Est, degree=2 ) 
-                     try(
+                     
                      VAST_fit <- fit_model(settings = settings,
                                            "Lat_i"=as.numeric(seasonal_tows[,'Lat']), 
                                            "Lon_i"=as.numeric(seasonal_tows[,'Lon']), 
@@ -232,7 +231,7 @@ if(nrow(seasonnn)>0){
                                            X2_formula = X2_formula,
                                            covariate_data = covdata,
                                            optimize_args=list("lower"=-Inf,"upper"=Inf))
-                     )
+                     
                      #grab directory where 2 knot files will be 
                      run_directory = getwd()
                      #set directory to plot there
@@ -262,7 +261,7 @@ if(nrow(seasonnn)>0){
                    
                    #NOT USING COVARIATES
                    { 
-                     try(
+                     
                      VAST_fit <- fit_model(settings = settings,
                                            "Lat_i"=as.numeric(seasonal_tows[,'Lat']), 
                                            "Lon_i"=as.numeric(seasonal_tows[,'Lon']), 
@@ -272,17 +271,18 @@ if(nrow(seasonnn)>0){
                                            "a_i"=as.numeric(seasonal_tows[,'AreaSwept_km2']),
                                            
                                            optimize_args=list("lower"=-Inf,"upper"=Inf))
-                     )
+                     
                      #grab directory where 2 knot files and settings file will be 
                      run_directory = getwd()
                      
                      #set directory to plot there
                      setwd(d_name)})
             
+         
             
-            
-            
-            saveRDS(VAST_fit,file = paste(d_name,"/VAST_fit_.RDS",sep=""))
+            if(!(class(VAST_fit) %in% c("integer","numeric"))){
+          try(saveRDS(VAST_fit,file = paste(d_name,"/VAST_fit_.RDS",sep="")))
+            }
             
             #shouldnt need this as is
             # file.rename(from= paste0(run_directory,"/settings.txt") 
@@ -300,19 +300,17 @@ if(nrow(seasonnn)>0){
             
             #  plot_biomass_index(VAST_fit)
             
-            plot(VAST_fit)
+         try( plot(VAST_fit))
             
             #add years and season to index csv
-            index_csv = read.csv("Index.csv")
-            index_csv$Year = as.numeric(VAST_fit$year_labels)
-            index_csv$Season = rep(season,length(index_csv$Time))
-            index_csv$Covariate = rep(cov.dir,length(index_csv$Time))
+            try(index_csv <- read.csv("Index.csv"))
+            try( index_csv$Year <- as.numeric(VAST_fit$year_labels))
+            try( index_csv$Season <- rep(season,length(index_csv$Time)))
+            try( index_csv$Covariate <- rep(cov.dir,length(index_csv$Time)))
             
             
-            write.csv(index_csv,"Index_wYearSeason.csv")
+           try(write.csv(index_csv,"Index_wYearSeason.csv"))
             
-            
-          
 }
 }
             #send an email telling me its done

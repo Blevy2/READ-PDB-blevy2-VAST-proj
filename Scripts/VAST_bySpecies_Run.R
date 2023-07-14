@@ -243,7 +243,7 @@ source("Scripts/VAST_bySpecies_Function.R") #my edited version that skips most t
 
 
 nCoresToUse <- length(combos[,1])
-nCoresToUse <- 18
+nCoresToUse <- 10
 
 
 cl <- parallel::makeCluster(nCoresToUse,revtunnel = TRUE, outfile = "", verbose = TRUE, master=nsl(Sys.info()['nodename'])) #options from https://stackoverflow.com/questions/41639929/r-cannot-makecluster-multinode-due-to-cannot-open-the-connection-error
@@ -254,11 +254,13 @@ result <- list()
 number_scenarios <- length(combos[,1])
 
 #varlist are variables to make available to each node
-parallel::clusterExport(cl, varlist= c("combos","tow_data_species","tow_data_season","use_cov","cov.dir","bias_corr"),envir = .GlobalEnv)
+parallel::clusterExport(cl, varlist= c("orig.dir","run_VAST","combos","tow_data_species","tow_data_season","use_cov","cov.dir","bias_corr"),envir = environment())
 
 result <- list()
 
-result <- parallel::parLapply(cl,as.numeric(not_start_not_finish$scenario_number),run_VAST)
+result <- parallel::parLapply(cl,as.numeric(start_not_finished$scenario_number),
+                              fun= function(scenario_num) tryCatch(run_VAST(scenario_num),error=function(e) e)
+                              )
 
 result <- parallel::parLapply(cl,1:number_scenarios,run_VAST_TEST)#for testing
 
