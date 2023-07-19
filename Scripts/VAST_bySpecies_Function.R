@@ -82,6 +82,8 @@ run_VAST <-
       KN = round(mean(c(NTows_S/NYrs_S,NTows_F/NYrs_F),na.rm = T))
 
       KN = max(100,KN)
+      #increase number to test difference
+     # KN=2*KN
     }
 
             
@@ -111,7 +113,8 @@ run_VAST <-
  #if no seasonal data, flag it for email and result
             # print(nrow(FALLL))
 
-print(nrow(seasonnn))
+print(paste0(nrow(seasonnn),"_",CN,"_",SA,"_",season,"_",j,"_",BC))
+
 if(nrow(seasonnn)==0){fail_reason = "No seasonal data"
                       setwd(orig.dir)}
             
@@ -163,7 +166,7 @@ if(nrow(seasonnn)>0){
             #only continue if vast fit doesnt already exist
             if(class(checkk)%in%c("integer","numeric")){
               
-              print(paste0(c(CN,SA,season,j,BC)))
+          
               
             #obsmodel ==  c(2, 1)
             if(obsmodel[1] ==  2){
@@ -203,8 +206,52 @@ if(nrow(seasonnn)>0){
                                       Version = "VAST_v14_0_1")}
             
 
-    
-            
+              
+            #if rerunning the ones with errors, adjust settings
+              #only setup for obsmodel (2,1)
+
+              if(!is.null(start_not_finished[["errors"]])){
+                row_num = which(start_not_finished$scenario_number==scenario_num,arr.ind=TRUE)
+                if(nchar(start_not_finished[["errors"]][row_num])<30){
+
+
+                #pull out errors
+                ers = strsplit(start_not_finished[["errors"]][[row_num]],"/")
+                if(ers[[1]][1]==""){ers = ers[[1]][-1]} #delete blank place
+
+                #change settings based on errors
+                for(i in seq(length(ers))){
+                  print(ers[[i]])
+                  if(ers[[i]]=="epsilon2"){settings$FieldConfig[2,2]=0}
+                  if(ers[[i]]=="epsilon1"){settings$FieldConfig[2,1]=0}
+                  if(ers[[i]]=="omega1"){settings$FieldConfig[1,1]=0}
+                  if(ers[[i]]=="omega2"){settings$FieldConfig[1,2]=0}
+
+                }
+                print(settings$FieldConfig)
+                }
+              }
+              # 
+              # if(!is.null(zro)){
+              #   if(nchar(zro[scenario_num])<30){
+              #     
+              #     
+              #     #pull out errors
+              #     ers = strsplit(zro[[scenario_num]],"/")
+              #     if(ers[[1]][1]==""){ers = ers[[1]][-1]} #delete blank place
+              #     
+              #     #change settings based on errors
+              #     for(i in seq(length(ers))){
+              #       print(ers[[i]])
+              #       if(ers[[i]]=="epsilon2"){settings$FieldConfig[2,2]=0}
+              #       if(ers[[i]]=="epsilon1"){settings$FieldConfig[2,1]=0}
+              #       if(ers[[i]]=="omega1"){settings$FieldConfig[1,1]=0}
+              #       if(ers[[i]]=="omega2"){settings$FieldConfig[1,2]=0}
+              #       
+              #     }
+              #     print(settings$FieldConfig)
+              #   }
+              # }
             #avoids specific error related to running on server
             #settings$Version <- 'VAST_v12_0_0'
    

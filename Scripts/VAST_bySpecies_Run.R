@@ -132,7 +132,7 @@ seasons <- c("FALL","SPRING")
 bias_corr <- c("TRUE")
 
 #use covariates in VAST?
-use_cov <- FALSE
+use_cov <- TRUE
 
 cov.dir <- ifelse(use_cov,"W_Cov","No_Cov")
 
@@ -177,6 +177,8 @@ for(KM in knot_methods){temp=temp4
                         temp$knots_method=KM
                         temp5=rbind(temp5,temp)}
 
+#create blank start_not_finished
+start_not_finished=data.frame()
 combos=temp5
 ###################################################################################################################
 
@@ -228,10 +230,73 @@ colnames(combos) = c("common_name","stock_area","season","obsmodel","bias_correc
 
 
 
+###################################################################################################################
+#IF RERUNNING FAILED VAST RUNS, DETERMINE NEW SETTINGS BASED ON ERROR MESSAGE (NEED TO RUN MISSING_VAST.R FIRST TO OBTAIN START_NOT_FINISHED DATAFRAME)
+zro=vector()
+
+
+for(i in seq(length(start_not_finished$message))){
+
+#first see whether parameters going to zero
+if(stringr::str_sub(start_not_finished$message[i],start=1,end=48)[[1]]=="Please turn off factor-model variance parameters"){
+  #just 1 epsilon parameter?
+ if(stringr::str_sub(start_not_finished$message[i],start=-10,end=-4)=="epsilon"){zro[[i]]=stringr::str_sub(start_not_finished$message[i],start=-10,end=-3)} 
+  #just 1 omega parameter?
+  if(stringr::str_sub(start_not_finished$message[i],start=-8,end=-4)=="omega"){zro[[i]]=stringr::str_sub(start_not_finished$message[i],start=-8,end=-3)} 
+
+  #see whether more than 1 is going to 0
+  if(nchar(start_not_finished$message[i])>150){
+    params=vector()
+    msg = start_not_finished$message[i]
+    #test to see which parameters are in there
+    #omega 1 and 2
+    if(grepl("omega2",msg)){params=paste0(params,"/omega2")}
+    if(grepl("omega1",msg)){params=paste0(params,"/omega1")}
+    if(grepl("epsilon2",msg)){params=paste0(params,"/epsilon2")}
+    if(grepl("epsilon1",msg)){params=paste0(params,"/epsilon1")}
+
+    zro[[i]] = params
+  }
+
+}
+
+  #sometimes message is not helpful
+  if(stringr::str_sub(start_not_finished$message[i],start=1,end=13)=="Please change"){
+    zro[[i]] = start_not_finished$message[i]
+  }  
+  
+#sometimes there are 100% encounters
+if(stringr::str_sub(start_not_finished$message[i],start=1,end=10)=="Some years"){
+    zro[[i]] = start_not_finished$message[i]
+}
+  
+#sometimes "systems is computationally singular" ???
+if(stringr::str_sub(start_not_finished$message[i],start=1,end=25)=="system is computationally"){
+  zro[[i]] = start_not_finished$message[i]
+    
+  }
+  
+
+#sometimes covariate info is missing
+if(stringr::str_sub(start_not_finished$message[i],start=1,end=4)=="Year"){
+  yr = stringr::str_sub(start_not_finished$message[i],start=6,end=9)
+  zro[[i]] = start_not_finished$message[i]
+}
+
+}
+
+start_not_finished$errors = zro
+start_not_finished$scenario_number=as.numeric(start_not_finished$scenario_number)
+
+
+
+###################################################################################################################
+
+
 
 
 #save combos for use later in plotting
-saveRDS(combos,paste0(orig.dir,"/VAST_runs/",CN,"/combos.RDS"))
+saveRDS(combos,paste0(orig.dir,"/VAST_runs/combos_7_14.RDS"))
 
 #run in parallel
 
@@ -254,15 +319,17 @@ result <- list()
 number_scenarios <- length(combos[,1])
 
 #varlist are variables to make available to each node
-parallel::clusterExport(cl, varlist= c("orig.dir","run_VAST","combos","tow_data_species","tow_data_season","use_cov","cov.dir","bias_corr"),envir = environment())
+
+parallel::clusterExport(cl, varlist= c("start_not_finished","orig.dir","run_VAST","combos","tow_data_species","tow_data_season","use_cov","cov.dir","bias_corr"),envir = environment())
 
 result <- list()
 
+#1:number_scenarios
 result <- parallel::parLapply(cl,as.numeric(start_not_finished$scenario_number),
                               fun= function(scenario_num) tryCatch(run_VAST(scenario_num),error=function(e) e)
                               )
 
-result <- parallel::parLapply(cl,1:number_scenarios,run_VAST_TEST)#for testing
+#result <- parallel::parLapply(cl,1:number_scenarios,run_VAST_TEST)#for testing
 
 parallel::stopCluster(cl)
 
