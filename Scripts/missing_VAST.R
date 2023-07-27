@@ -132,3 +132,28 @@ start_not_finished = subset(VAST_completed_info,started=="Started" & completed==
 not_start_not_finish = subset(VAST_completed_info,started%in%c("Not Started","Not Started No seasonal data") & completed=="Not Finished")
 
                               
+
+#check VAST errors
+errs=data.frame()
+for(i in seq(length(result))){
+  if(!is.null(result[[i]]$message)){
+    errs=rbind(errs,c(result[[i]]$message,i))
+  }
+}
+colnames(errs)=c("message","combos_n")
+
+#add vast errors to start_not_finish
+start_not_finished=subset(start_not_finished,as.numeric(scenario_number)<97)
+start_not_finished=cbind(start_not_finished,errs)
+
+
+#save things from this run
+
+saveRDS(result,"result_noCov2.RDS")
+saveRDS(not_start_not_finish,"not_start_not_finish_noCov2.RDS")
+saveRDS(start_not_finished,"start_not_finished_noCov2.RDS")
+saveRDS(finished_all,"finished_all_noCov2.RDS")
+
+
+
+
