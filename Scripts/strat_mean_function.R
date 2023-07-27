@@ -72,7 +72,7 @@ spp.area <- sum(sv.area$STRATUM_AREA[sv.area$STRATUM %in% spp.strata]) #TOTAL AR
 temp =  srs_survey(df=spp, sa=sv.area, str=NULL, ta=0.01, sppname = CN  )
 
 strat_mean_species[[species]][[unitt]] <- temp %>%
-  mutate(mean.yr.absolute=mean.yr*spp.area, sd.mean.yr.absolute=sd.mean.yr*spp.area,
+  mutate(mean.yr.absolute=mean.yr*spp.area/.01, sd.mean.yr.absolute=sd.mean.yr*spp.area/.01,
          CV.absolute=sd.mean.yr.absolute/mean.yr.absolute) # if strata=NULL, the function will use the unique strata set found in df
 
 
