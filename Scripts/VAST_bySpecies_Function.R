@@ -52,11 +52,16 @@ run_VAST <-
     assignInNamespace("check_fit", check_fit_BENS, ns = "VAST")
     
     
+        cov.dir <- ifelse(use_cov,"W_Cov","No_Cov")
         
         tow_data <- tow_data_species[[CN]][[SA]]
         if(length(tow_data[,1])==0){print(paste0("stopped become of " ,CN,SA,season,j,BC))}
-        #use only Temp_Hub values to start
-        tow_data = subset(tow_data,!is.na(Temp_Hub))
+        
+        #use only Temp_Hub values
+        if(cov_type=="Hub"){tow_data = subset(tow_data,!is.na(Temp_Hub))}
+        
+        #use only survey temp values
+        if(cov_type=="Survey"){tow_data = subset(tow_data,!is.na(BOT_TEMP))}
         
         #use up to 2019 because 2020 missing
         tow_data = subset(tow_data,YEAR<2020)
@@ -83,7 +88,7 @@ run_VAST <-
 
       KN = max(100,KN)
       #increase number to test difference
-     # KN=2*KN
+      #KN=2*KN
     }
 
             
@@ -123,6 +128,7 @@ if(nrow(seasonnn)>0){
             
             # format for use in VAST
             seasonal_tows <- seasonnn %>%
+              filter(substr(SURVEY, 1, 4) =="NMFS") %>%   #only NMFS surveys
               #filter(SEASON == as.character(season)) %>%
               # filter(YEAR >= 2009) %>%
               mutate(mycatch = CATCH_WT_CAL) %>%
@@ -156,9 +162,9 @@ if(nrow(seasonnn)>0){
               #check to see whether vast fit already exists
             checkk=scenario_num
            #print(class(checkk))
-           try({
-             (checkk <- read.csv("Index_wYearSeason.csv"))
-           })       
+           # try({
+           #   (checkk <- read.csv("Index_wYearSeason.csv"))
+           # })       
             
             #if already a file, change vast_fail_reason
             if(!(class(checkk)%in%c("integer","numeric"))){VAST_fail_reason = "Exists" }
@@ -226,6 +232,8 @@ if(nrow(seasonnn)>0){
                   if(ers[[i]]=="epsilon1"){settings$FieldConfig[2,1]=0}
                   if(ers[[i]]=="omega1"){settings$FieldConfig[1,1]=0}
                   if(ers[[i]]=="omega2"){settings$FieldConfig[1,2]=0}
+                  if(ers[[i]]=="100% encounter"){settings$FieldConfig[,1]=0}
+                  
 
                 }
                 print(settings$FieldConfig)

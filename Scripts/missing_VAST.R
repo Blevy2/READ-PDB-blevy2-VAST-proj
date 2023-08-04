@@ -140,19 +140,19 @@ for(i in seq(length(result))){
     errs=rbind(errs,c(result[[i]]$message,i))
   }
 }
-colnames(errs)=c("message","combos_n")
+colnames(errs)=c("message","result_n")
 
 #add vast errors to start_not_finish
-start_not_finished=subset(start_not_finished,as.numeric(scenario_number)<97)
+start_not_finished=subset(start_not_finished,as.numeric(scenario_number)>96)
 start_not_finished=cbind(start_not_finished,errs)
 
 
 #save things from this run
 
-saveRDS(result,"result_noCov2.RDS")
-saveRDS(not_start_not_finish,"not_start_not_finish_noCov2.RDS")
-saveRDS(start_not_finished,"start_not_finished_noCov2.RDS")
-saveRDS(finished_all,"finished_all_noCov2.RDS")
+saveRDS(result,"result_WCov2.RDS")
+saveRDS(not_start_not_finish,"not_start_not_finish_WCov2.RDS")
+saveRDS(start_not_finished,"start_not_finished_WCov2.RDS")
+saveRDS(finished_all,"finished_all_WCov2.RDS")
 
 
 

@@ -27,10 +27,10 @@ if(length(covs)==1){
 #or combine two combos (with and without covariates)
 #reduce combos to those that finished
 #if combining two, need to combined finished ones
-combosA=combos_7_16  #W_Cov
-combosB=combos_7_18_NoCov  #No_Cov
-finished_allA = finished_all2
-finished_allB = finished_all_noCov2
+combosA=combos_WCov  #W_Cov
+combosB=combos_NoCov  #No_Cov
+finished_allA = finished_all_WCov2
+finished_allB = finished_all_NoCov2
 
 combosA$Covs="W_Cov"
 combosB$Covs = "No_Cov"
@@ -45,7 +45,7 @@ combosB = subset(combosB,scenario_numberA%in%finished_allB$scenario_number)
 combos2=rbind(combosA,combosB)
 
 
-combos=rbind(combos,combos_7_16)
+#combos=rbind(combos,combos_7_16)
 
 
 ###################################################################################
@@ -126,6 +126,10 @@ CNs = unique(combos2$COMMON_NAME)
 VAST_fit_all <- data.frame()
 run_time_info <- data.frame()
 
+VAST_fit_unit <- list()
+
+
+
 for(CN in CNs){
   
   #create list of folders to use
@@ -167,13 +171,13 @@ for(CN in CNs){
  # SA = path[[1]][2] #stock area
  
   
-
+  VAST_fit_unit[[CN]] <- list()
   
    for(SA in SAs){ 
      
   seasons =  unique(subset(combos2,COMMON_NAME==CN&STOCK_ABBREV==SA))[["SEASON"]]
   seasons = unique(seasons)
-     VAST_fit_unit <- data.frame()
+  VAST_fit_unit[[CN]][[SA]] <- data.frame()
   SM_est_unit <- data.frame()
   for(season in seasons){
     
@@ -198,20 +202,20 @@ for(CN in CNs){
       VAST_fit_csv$scenario = folders[folder_idx]
       
       #add to overall vast dataframe for unit
-      VAST_fit_unit <- rbind(VAST_fit_unit,VAST_fit_csv)
+      VAST_fit_unit[[CN]][[SA]] <- rbind(VAST_fit_unit[[CN]][[SA]],VAST_fit_csv)
       
       #read in parameter estimates
       load(paste0(getwd(),"/",folders[folder_idx],"/parameter_estimates.RData"))
       
       hrsss=parameter_estimates$time_for_run[[1]]/(60*60)
       secc=as.numeric(parameter_estimates$time_for_run[[1]])
-      newinfo = c(secc,hrsss,unlist(strsplit(folder,"/")))
+      newinfo = c(secc,hrsss,unlist(strsplit(folders[folder_idx],"/")))
       run_time_info = rbind(run_time_info,newinfo)
       
       folder_idx = folder_idx+1
     }
       
-  VAST_fit_all <- rbind(VAST_fit_all,VAST_fit_unit)
+  VAST_fit_all <- rbind(VAST_fit_all,VAST_fit_unit[[CN]][[SA]])
   }
    }
 
@@ -221,9 +225,9 @@ for(CN in CNs){
   print(ggplot() +
           
           #plot VAST estimate with covariates 
-          geom_errorbar(data=VAST_fit_unit,aes(x=Year,y=Estimate,group=SEASON,ymin=Estimate-(1.96*Std..Error.for.Estimate), ymax=Estimate+(1.96*Std..Error.for.Estimate), color = Covariate),width=.3) +
-          geom_point(data=VAST_fit_unit,aes(x=Year,y=Estimate,group=SEASON, color = Covariate),size=2)+
-          geom_line(data=VAST_fit_unit,aes(x=Year,y=Estimate,group=SEASON, color = Covariate))+
+          geom_errorbar(data=VAST_fit_unit[[CN]][[SA]],aes(x=Year,y=Estimate,group=Covariate,ymin=Estimate-(1.96*Std..Error.for.Estimate), ymax=Estimate+(1.96*Std..Error.for.Estimate), color = Covariate),width=.3) +
+          geom_point(data=VAST_fit_unit[[CN]][[SA]],aes(x=Year,y=Estimate,group=Covariate, color = Covariate),size=2)+
+          geom_line(data=VAST_fit_unit[[CN]][[SA]],aes(x=Year,y=Estimate,group=Covariate, color = Covariate))+
           
           #plot stratified calculation data 
           geom_errorbar(data=SM_est_unit,aes(x=YEAR,y=mean.yr.absolute,group=SEASON,ymin=mean.yr.absolute-(1.96*sd.mean.yr.absolute), ymax=mean.yr.absolute+(1.96*sd.mean.yr.absolute), color = "Strat Mean"),width=.3) +
@@ -251,11 +255,11 @@ for(CN in CNs){
 
 #plot VAST only 
 #put legend below to see plots
-print(ggplot(data=VAST_fit_unit) +
+print(ggplot(data=VAST_fit_unit[[CN]][[SA]]) +
   #plot VAST estimate with covariates 
-  geom_errorbar(data=VAST_fit_unit,aes(x=Year,y=Estimate,group=SEASON,ymin=Estimate-(1.96*Std..Error.for.Estimate), ymax=Estimate+(1.96*Std..Error.for.Estimate), color = Covariate),width=.3) +
-  geom_point(data=VAST_fit_unit,aes(x=Year,y=Estimate,group=SEASON, color = Covariate),size=2)+
-  geom_line(data=VAST_fit_unit,aes(x=Year,y=Estimate,group=SEASON, color = Covariate))+
+  geom_errorbar(data=VAST_fit_unit[[CN]][[SA]],aes(x=Year,y=Estimate,group=Covariate,ymin=Estimate-(1.96*Std..Error.for.Estimate), ymax=Estimate+(1.96*Std..Error.for.Estimate), color = Covariate),width=.3) +
+  geom_point(data=VAST_fit_unit[[CN]][[SA]],aes(x=Year,y=Estimate,group=Covariate, color = Covariate),size=2)+
+  geom_line(data=VAST_fit_unit[[CN]][[SA]],aes(x=Year,y=Estimate,group=Covariate, color = Covariate))+
   
  facet_wrap(~ SEASON, ncol =1, scales = "free")+ 
   theme(legend.position="bottom")+
@@ -294,7 +298,7 @@ print(ggplot() +
 # ggplot(data=VAST_fit_all) +
 #   geom_point(aes(x=Year,y=Estimate,group=scenario,color=scenario),size=2)+
 #   geom_line(aes(x=Year,y=Estimate, group=scenario,color=scenario))+
-#   geom_errorbar(data=VAST_fit_unit,aes(x=Year,y=Estimate,group=scenario,ymin=Estimate-(1.96*Std..Error.for.Estimate), ymax=Estimate+(1.96*Std..Error.for.Estimate), color = scenario),width=.3) +
+#   geom_errorbar(data=VAST_fit_unit[[CN]][[SA]],aes(x=Year,y=Estimate,group=scenario,ymin=Estimate-(1.96*Std..Error.for.Estimate), ymax=Estimate+(1.96*Std..Error.for.Estimate), color = scenario),width=.3) +
 #   
 #   facet_wrap(~ SEASON, ncol =1, scales = "free")+
 #   labs(x="Year",y="Biomass", title = paste0(CN," ",SA," VAST ONLY"), color ="" )+

@@ -134,7 +134,8 @@ bias_corr <- c("TRUE")
 #use covariates in VAST?
 use_cov <- TRUE
 
-cov.dir <- ifelse(use_cov,"W_Cov","No_Cov")
+#which temp covariate to use
+cov_type <- "Hub"  #Survey
 
 #knot method
 knot_methods = c("grid")  #c("samples","grid")
@@ -267,7 +268,7 @@ if(stringr::str_sub(start_not_finished$message[i],start=1,end=48)[[1]]=="Please 
   
 #sometimes there are 100% encounters
 if(stringr::str_sub(start_not_finished$message[i],start=1,end=10)=="Some years"){
-    zro[[i]] = start_not_finished$message[i]
+    zro[[i]] = "100% encounter"
 }
   
 #sometimes "systems is computationally singular" ???
@@ -275,7 +276,6 @@ if(stringr::str_sub(start_not_finished$message[i],start=1,end=25)=="system is co
   zro[[i]] = start_not_finished$message[i]
     
   }
-  
 
 #sometimes covariate info is missing
 if(stringr::str_sub(start_not_finished$message[i],start=1,end=4)=="Year"){
@@ -296,7 +296,7 @@ start_not_finished$scenario_number=as.numeric(start_not_finished$scenario_number
 
 
 #save combos for use later in plotting
-saveRDS(combos,paste0(orig.dir,"/VAST_runs/combos_7_14.RDS"))
+saveRDS(combos,paste0(orig.dir,"/VAST_runs/combos_WCov.RDS"))
 
 #run in parallel
 
@@ -320,12 +320,12 @@ number_scenarios <- length(combos[,1])
 
 #varlist are variables to make available to each node
 
-parallel::clusterExport(cl, varlist= c("start_not_finished","orig.dir","run_VAST","combos","tow_data_species","tow_data_season","use_cov","cov.dir","bias_corr"),envir = environment())
+parallel::clusterExport(cl, varlist= c("start_not_finished","orig.dir","run_VAST","combos","tow_data_species","tow_data_season","use_cov","cov_type","bias_corr"),envir = environment())
 
 result <- list()
 
 #1:number_scenarios
-result <- parallel::parLapply(cl,as.numeric(start_not_finished$scenario_number),
+result <- parallel::parLapply(cl,as.numeric(start_not_finished$scenario_number) ,
                               fun= function(scenario_num) tryCatch(run_VAST(scenario_num),error=function(e) e)
                               )
 
