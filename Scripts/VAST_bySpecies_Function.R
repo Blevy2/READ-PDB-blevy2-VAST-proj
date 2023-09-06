@@ -52,16 +52,23 @@ run_VAST <-
     assignInNamespace("check_fit", check_fit_BENS, ns = "VAST")
     
     
-        cov.dir <- ifelse(use_cov,"W_Cov","No_Cov")
+        cov.dir <- ifelse(use_cov,"W_Cov_X1","No_Cov_alltows")
         
         tow_data <- tow_data_species[[CN]][[SA]]
         if(length(tow_data[,1])==0){print(paste0("stopped become of " ,CN,SA,season,j,BC))}
         
+        nrows_before = nrow(subset(tow_data,SEASON==season))
+        
+        
+        if(use_cov==TRUE){
+          
         #use only Temp_Hub values
         if(cov_type=="Hub"){tow_data = subset(tow_data,!is.na(Temp_Hub))}
-        
+      
         #use only survey temp values
         if(cov_type=="Survey"){tow_data = subset(tow_data,!is.na(BOT_TEMP))}
+        }
+        
         
         #use up to 2019 because 2020 missing
         tow_data = subset(tow_data,YEAR<2020)
@@ -88,7 +95,7 @@ run_VAST <-
 
       KN = max(100,KN)
       #increase number to test difference
-      #KN=2*KN
+      KN=2*KN
     }
 
             
@@ -117,8 +124,10 @@ run_VAST <-
 
  #if no seasonal data, flag it for email and result
             # print(nrow(FALLL))
-
-print(paste0(nrow(seasonnn),"_",CN,"_",SA,"_",season,"_",j,"_",BC))
+            
+        nrows_after = nrow(seasonnn)
+            
+print(paste0(nrows_after,"_",CN,"_",SA,"_",season,"_",j,"_",BC))
 
 if(nrow(seasonnn)==0){fail_reason = "No seasonal data"
                       setwd(orig.dir)}
@@ -162,9 +171,9 @@ if(nrow(seasonnn)>0){
               #check to see whether vast fit already exists
             checkk=scenario_num
            #print(class(checkk))
-           # try({
-           #   (checkk <- read.csv("Index_wYearSeason.csv"))
-           # })       
+           try({
+             (checkk <- read.csv("Index_wYearSeason.csv"))
+           })
             
             #if already a file, change vast_fail_reason
             if(!(class(checkk)%in%c("integer","numeric"))){VAST_fail_reason = "Exists" }
@@ -269,11 +278,14 @@ if(nrow(seasonnn)>0){
                    #IF USING COVARIATES
                    { 
                      
+                     if(cov_type=="Hub"){covdata <- seasonnn[,c("LATITUDE","LONGITUDE","YEAR","Temp_Hub")]}
                      
-                     covdata <- seasonnn[,c("LATITUDE","LONGITUDE","YEAR","Temp_Hub")]
+                     if(cov_type=="Survey"){covdata <- seasonnn[,c("LATITUDE","LONGITUDE","YEAR","BOT_TEMP")]}
+                     
                      colnames(covdata) <- c("Lat","Lon","Year","Temp_Est")
                      #covariate formula
                      X2_formula = ~ poly(Temp_Est, degree=2 ) 
+                     X1_formula = ~ poly(Temp_Est, degree=2 ) 
                      
                      VAST_fit <- fit_model(settings = settings,
                                            "Lat_i"=as.numeric(seasonal_tows[,'Lat']), 
@@ -282,7 +294,7 @@ if(nrow(seasonnn)>0){
                                            "c_iz"=as.numeric(rep(0,nrow(seasonal_tows))), 
                                            "b_i"=as.numeric(seasonal_tows[,'Catch_KG']), 
                                            "a_i"=as.numeric(seasonal_tows[,'AreaSwept_km2']),
-                                           #   X1_formula = X1_formula,
+                                           X1_formula = X1_formula,
                                            X2_formula = X2_formula,
                                            covariate_data = covdata,
                                            optimize_args=list("lower"=-Inf,"upper"=Inf))
@@ -427,7 +439,7 @@ if(nrow(seasonnn)>0){
 
 
 
-    return(list(scenario =  paste0(scenario_num," Scenario ",CN," ",SA," ",season," ",j," ",BC," ",KN," ",KM),outcome=finished_run,knots=KN,errors=traceback()))
+    return(list(scenario =  paste0(scenario_num," Scenario ",CN," ",SA," ",season," ",j," ",BC," ",KN," ",KM),outcome=finished_run,knots=KN,errors=traceback(),rows_before=nrows_before,rows_after=nrows_after))
         
 
             
