@@ -4,7 +4,7 @@
 strat_mean_species <- readRDS("Data/strat_mean_species.RDS")
 
 #SET THE APPROPRIATE WORKING DIRECTORY MANUALLY
-
+setwd(paste0(getwd(),"/VAST_runs"))
 
 #READ IN CSV WITH combintations used
 #note: if I forget to save the combos.RDS file, I can probably recreate the table by
@@ -26,7 +26,16 @@ combos$N_knots= paste0("KN_",combos$N_knots)
 #check for covariate folders and build into the table
 covs = list.files(paste0(combos[1,1],"/",combos[1,2],"/",combos[1,4],"/SPRING"))
 if(is.null(covs)){covs = list.files(paste0(combos[1,1],"/",combos[1,2],"/",combos[1,4],"/FALL"))}
+
+
+####################################################################################################
+#PICK ONE
 covs = covs[covs %in% c("No_Cov","W_Cov")]
+
+covs = covs[covs %in% c("No_Cov_alltows")]
+
+covs = covs[covs %in% c("W_Cov_X1")]
+####################################################################################################
 
 
 
@@ -140,19 +149,83 @@ for(i in seq(length(result))){
     errs=rbind(errs,c(result[[i]]$message,i))
   }
 }
-colnames(errs)=c("message","combos_n")
+colnames(errs)=c("message","result_n")
 
 #add vast errors to start_not_finish
 start_not_finished=subset(start_not_finished,as.numeric(scenario_number)<97)
 start_not_finished=cbind(start_not_finished,errs)
 
 
+
+###################################################################################################################
+#DETERMINE NEW SETTINGS BASED ON ERROR MESSAGE 
+zro=vector()
+
+
+for(i in seq(length(start_not_finished$message))){
+  
+  #first see whether parameters going to zero
+  if(stringr::str_sub(start_not_finished$message[i],start=1,end=48)[[1]]=="Please turn off factor-model variance parameters"){
+    #just 1 epsilon parameter?
+    if(stringr::str_sub(start_not_finished$message[i],start=-10,end=-4)=="epsilon"){zro[[i]]=stringr::str_sub(start_not_finished$message[i],start=-10,end=-3)} 
+    #just 1 omega parameter?
+    if(stringr::str_sub(start_not_finished$message[i],start=-8,end=-4)=="omega"){zro[[i]]=stringr::str_sub(start_not_finished$message[i],start=-8,end=-3)} 
+    
+    #see whether more than 1 is going to 0
+    if(nchar(start_not_finished$message[i])>150){
+      params=vector()
+      msg = start_not_finished$message[i]
+      #test to see which parameters are in there
+      #omega 1 and 2
+      if(grepl("omega2",msg)){params=paste0(params,"/omega2")}
+      if(grepl("omega1",msg)){params=paste0(params,"/omega1")}
+      if(grepl("epsilon2",msg)){params=paste0(params,"/epsilon2")}
+      if(grepl("epsilon1",msg)){params=paste0(params,"/epsilon1")}
+      
+      zro[[i]] = params
+    }
+    
+  }
+  
+  #sometimes message is not helpful
+  if(stringr::str_sub(start_not_finished$message[i],start=1,end=13)=="Please change"){
+    zro[[i]] = start_not_finished$message[i]
+  }  
+  
+  #sometimes there are 100% encounters
+  if(stringr::str_sub(start_not_finished$message[i],start=1,end=10)=="Some years"){
+    zro[[i]] = "100% encounter"
+  }
+  
+  #sometimes "systems is computationally singular" ???
+  if(stringr::str_sub(start_not_finished$message[i],start=1,end=25)=="system is computationally"){
+    zro[[i]] = start_not_finished$message[i]
+    
+  }
+  
+  #sometimes covariate info is missing
+  if(stringr::str_sub(start_not_finished$message[i],start=1,end=4)=="Year"){
+    yr = stringr::str_sub(start_not_finished$message[i],start=6,end=9)
+    zro[[i]] = start_not_finished$message[i]
+  }
+  
+}
+
+start_not_finished$errors = zro
+start_not_finished$scenario_number=as.numeric(start_not_finished$scenario_number)
+
+
+
+###################################################################################################################
+
+
+
 #save things from this run
 
-saveRDS(result,"result_noCov2.RDS")
-saveRDS(not_start_not_finish,"not_start_not_finish_noCov2.RDS")
-saveRDS(start_not_finished,"start_not_finished_noCov2.RDS")
-saveRDS(finished_all,"finished_all_noCov2.RDS")
+saveRDS(result,"result_W_Cov_X1_2.RDS")
+saveRDS(not_start_not_finish,"not_start_not_finish_W_Cov_X1_2.RDS")
+saveRDS(start_not_finished,"start_not_finished_W_Cov_X1_2.RDS")
+saveRDS(finished_all,"finished_all_W_Cov_X1_2.RDS")
 
 
 
