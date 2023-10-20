@@ -119,6 +119,24 @@ for(folder in folders){
   
   #check for Index_wYearSeason.csv file (indicates it completed)
   completed = ifelse("Index_wYearSeason.csv" %in% list.files(folder),"Finished","Not Finished")
+  #above was sometimes leading to false positive
+  if((!("Index_wYearSeason.csv" %in% list.files(folder)) & ("VAST_fit_.RDS" %in% list.files(folder)))){
+    #figure out scenario number in new result
+    
+    #if first time through, use scenario number from combos
+    if(!(paste0("start_not_finished_",covs,".RDS") %in% list.files(getwd()))){
+      scen_num_temp = which(combos$COMMON_NAME==species & combos$STOCK_ABBREV==stock_area & combos$SEASON==sn)
+      result[[scen_num_temp]]$message="VAST_fit exists, but Index_wYearSeason.csv does not"}
+    
+    #if second time through, use existing start_not_finished
+    if(paste0("start_not_finished_",covs,".RDS") %in% list.files(getwd())){
+    start_not_finished_TEMP = readRDS(paste0("start_not_finished_",covs,".RDS"))
+    scen_num_temp = which(start_not_finished_TEMP$species==species & start_not_finished_TEMP$stock_area==stock_area & start_not_finished_TEMP$season==sn)
+    result[[scen_num_temp]]$message="VAST_fit exists, but Index_wYearSeason.csv does not"}
+  
+    
+    
+    }
   
   run_time_info = c("N/A","N/A")
   #record time it took to run
@@ -209,6 +227,11 @@ for(i in seq(length(start_not_finished$message))){
     zro[[i]] = start_not_finished$message[i]
   }
   
+  #sometimes VAST_fit exists, but did not complete hte IndexwYearSeason part (plotfails)
+  if(stringr::str_sub(start_not_finished$message[i],start=1,end=8)=="VAST_fit"){
+    zro[[i]] = start_not_finished$message[i]
+  }
+  
 }
 
 start_not_finished$errors = zro
@@ -222,11 +245,39 @@ start_not_finished$scenario_number=as.numeric(start_not_finished$scenario_number
 
 #save things from this run
 
-saveRDS(result,"result_W_Cov_X1_2.RDS")
-saveRDS(not_start_not_finish,"not_start_not_finish_W_Cov_X1_2.RDS")
-saveRDS(start_not_finished,"start_not_finished_W_Cov_X1_2.RDS")
-saveRDS(finished_all,"finished_all_W_Cov_X1_2.RDS")
+saveRDS(result,"result_NoCov2_alltows.RDS")
+saveRDS(not_start_not_finish,"not_start_not_finish_NoCov2_alltows.RDS")
+saveRDS(start_not_finished,"start_not_finished_NoCov2_alltows.RDS")
+saveRDS(finished_all,"finished_all_NoCov2_alltows.RDS")
 
+
+
+
+
+
+
+
+
+
+
+
+
+#use below snip to insert missing row into start_not_finished, if needed
+
+dplyr::add_row(
+  start_not_finished,
+  species = combos$COMMON_NAME[23],
+  stock_area = combos$STOCK_ABBREV[23],
+  season = combos$SEASON[23],
+  started= "Started",
+  completed = "Not Finished",
+  scenario_number = "23",
+  run_secs = "N/A",
+  run_hours = "N/A",
+  knot_N = combos$N_knots[23],
+  .before = 4
+  
+)
 
 
 

@@ -52,22 +52,38 @@ run_VAST <-
     assignInNamespace("check_fit", check_fit_BENS, ns = "VAST")
     
     
-        cov.dir <- ifelse(use_cov,"W_Cov_X1","No_Cov_alltows")
+      #  cov.dir <- ifelse(use_cov,"W_Cov_X1","No_Cov_alltows")
+    cov.dir <- ifelse(use_cov,"W_Cov","No_Cov")
         
         tow_data <- tow_data_species[[CN]][[SA]]
         if(length(tow_data[,1])==0){print(paste0("stopped become of " ,CN,SA,season,j,BC))}
         
         nrows_before = nrow(subset(tow_data,SEASON==season))
         
-        
-        if(use_cov==TRUE){
+     #REMOVE FOR NO_COV_ALLTOWS   
+      #  if(use_cov==TRUE){
           
         #use only Temp_Hub values
         if(cov_type=="Hub"){tow_data = subset(tow_data,!is.na(Temp_Hub))}
       
         #use only survey temp values
         if(cov_type=="Survey"){tow_data = subset(tow_data,!is.na(BOT_TEMP))}
+          
+        #use data from both surveys, but prioritize Hubert's data because it seems to lead to better confidence intervals
+        if(cov_type=="Hub_Survey"){
+          tow_data = tow_data %>%
+            mutate(across(Temp_Hub, coalesce, BOT_TEMP))
+            tow_data = subset(tow_data,!is.na(Temp_Hub))
         }
+          
+         #use data from both surveys, but prioritize Survey estimate
+          if(cov_type=="Survey_Hub"){
+            tow_data = tow_data %>%
+              mutate(across(BOT_TEMP, coalesce,Temp_Hub ))
+            tow_data = subset(tow_data,!is.na(BOT_TEMP))
+          }
+          
+     #   }
         
         
         #use up to 2019 because 2020 missing
@@ -280,6 +296,8 @@ if(nrow(seasonnn)>0){
                      
                      if(cov_type=="Hub"){covdata <- seasonnn[,c("LATITUDE","LONGITUDE","YEAR","Temp_Hub")]}
                      
+                     if(cov_type=="Hub_Survey"){covdata <- seasonnn[,c("LATITUDE","LONGITUDE","YEAR","Temp_Hub")]}
+                     
                      if(cov_type=="Survey"){covdata <- seasonnn[,c("LATITUDE","LONGITUDE","YEAR","BOT_TEMP")]}
                      
                      colnames(covdata) <- c("Lat","Lon","Year","Temp_Est")
@@ -294,7 +312,7 @@ if(nrow(seasonnn)>0){
                                            "c_iz"=as.numeric(rep(0,nrow(seasonal_tows))), 
                                            "b_i"=as.numeric(seasonal_tows[,'Catch_KG']), 
                                            "a_i"=as.numeric(seasonal_tows[,'AreaSwept_km2']),
-                                           X1_formula = X1_formula,
+                                         #  X1_formula = X1_formula,
                                            X2_formula = X2_formula,
                                            covariate_data = covdata,
                                            optimize_args=list("lower"=-Inf,"upper"=Inf))

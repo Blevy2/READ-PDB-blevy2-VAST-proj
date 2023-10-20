@@ -132,7 +132,7 @@ bias_corr <- c("TRUE")
 use_cov <- TRUE
 
 #which temp covariate to use
-cov_type <- "Survey"  #Hub
+cov_type <- "Hub_Survey"   #Hub     "Survey"
 
 #knot method
 knot_methods = c("grid")  #c("samples","grid")
@@ -232,7 +232,7 @@ colnames(combos) = c("common_name","stock_area","season","obsmodel","bias_correc
 
 
 #save combos for use later in plotting
-saveRDS(combos,paste0(orig.dir,"/VAST_runs/combos_WCov_X1.RDS"))
+saveRDS(combos,paste0(orig.dir,"/VAST_runs/combos_W_Cov.RDS"))
 
 #run in parallel
 
@@ -260,9 +260,9 @@ parallel::clusterExport(cl, varlist= c("start_not_finished","orig.dir","run_VAST
 
 result <- list()
 
-#1st To run all scenarios (first time): 1:number_scenarios
+#1st To run all scenarios (first time):  1:number_scenarios
 #2nd To run just ones that did not finish: 
-result <- parallel::parLapply(cl,as.numeric(start_not_finished$scenario_number),
+result <- parallel::parLapply(cl, as.numeric(start_not_finished$scenario_number) ,
                               fun= function(scenario_num) tryCatch(run_VAST(scenario_num),error=function(e) e)
                               )
 
@@ -298,7 +298,7 @@ date_time <- add_readable_time()
   # Sending email by SMTP using a credentials file
   email |>
     smtp_send(
-      to = "benjamin.levy@noaa.gov",
+      to = "b.levy@bowdoin.edu",# "benjamin.levy@noaa.gov",
       from = "blevy6@gmail.com",
       subject = "ALL ARE DONE",
       credentials = creds_file("smtp")

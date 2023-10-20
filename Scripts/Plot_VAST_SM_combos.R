@@ -10,17 +10,18 @@ strat_mean_species <- readRDS("Data/strat_mean_species.RDS")
 tow_data_species <- readRDS("tow_data_species.RDS")
 
 
-scenario = "2xKnots_NMFSdata_SurveyTemp" #specific VAST_runs folder name
+scenario =  "2xKnots_NMFSdata_HubTemp"  #"2xKnots_NMFSdata_SurveyTemp" # "2xKnots_NMFSdata_HubSurvey_Temp"#specific VAST_runs folder name
 tt=strsplit(scenario,"_")
 survey_type = tt[[1]][2]
 cov_data_type = tt[[1]][3]
 
-cov_type = ifelse(cov_data_type=="SurveyTemp","BOT_TEMP","Temp_Hub")
+cov_type = ifelse(cov_data_type %in% c("SurveyHub","SurveyTemp"),"BOT_TEMP","Temp_Hub")
 
 orig.dir = getwd()
 
 #CHANGE WORKING DIRECTORY TO WHERE VAST RUNS ARE. PROBABLY VAST_RUNS
 setwd(paste0(getwd(),"/VAST_runs/VAST_runs_",scenario))
+
 
 
 #READ IN CSV WITH combintations used
@@ -136,6 +137,11 @@ combosB$Covs = "No_Cov"
 combosC$Covs = "No_Cov_alltows"
 combosD$Covs="W_Cov_X1"
 
+combosA$Covs2="W_Cov_X2only"
+combosB$Covs2 = "No_Cov_covtows"
+combosC$Covs2 = "No_Cov_alltows"
+combosD$Covs2="W_Cov_X1_X2"
+
 
 scenario_numberA = seq(length(combosA$COMMON_NAME))
 scenario_numberB = seq(length(combosB$COMMON_NAME))
@@ -149,7 +155,8 @@ combosD = subset(combosD,scenario_numberD%in%finished_allD$scenario_number)
 
 combos2=rbind(combosA,combosB,combosC,combosD)
 
-
+#manual definitions for plotting
+plot_cols <- c( "W_Cov_X2only" = "darkblue", "No_Cov_covtows" = "red",  "No_Cov_alltows" = "gold", "W_Cov_X1_X2" = "purple")
 ###################################################################################
 ###################################################################################
 
@@ -185,9 +192,16 @@ combos2=as.data.frame(combos2)
 
 
 
-#sort alphabetically so folders object below comes out in correct order
-combos2=combos2[with(combos2,order(COMMON_NAME,STOCK_ABBREV,rev(SEASON))),]
 
+#sort alphabetically so folders object below comes out in correct order
+#combos2=combos2[with(combos2,order(COMMON_NAME,STOCK_ABBREV,rev(SEASON))),] THIS STOPPED WORKING???
+combos2$SEASON_N[combos2$SEASON=="SPRING"]=1
+combos2$SEASON_N[combos2$SEASON=="FALL"]=2
+combos2=combos2[with(combos2,order(SEASON_N)),]
+
+combos2=combos2[with(combos2,order(COMMON_NAME,STOCK_ABBREV)),]
+
+combos2=combos2[,1:8]#get rid of dummy variable used to sort
 
 #THIS NOW INSIDE LOOP
 # combosX = subset(combos2,COMMON_NAME==CN)
@@ -214,7 +228,7 @@ combos2=combos2[with(combos2,order(COMMON_NAME,STOCK_ABBREV,rev(SEASON))),]
 # }
 
 
-pdf(file="Plots_Comparing_EstimatesNEW.pdf")
+pdf(file="Plots_Comparing_Estimates_10_6.pdf")
 
 
 #CNs=unique(combos$COMMON_NAME)[!unique(combos$COMMON_NAME)%in% c("DOGFISH, SPINY", "DOGFISH, SMOOTH")]
@@ -228,6 +242,11 @@ VAST_fit_all <- data.frame()
 VAST_fit_cov <- list()
 
 tow_data_decrease <- data.frame() #to store the change in number of tows for non covariate runs
+missing_data_year_all <- list() 
+
+pct_mis_cols <- c("% Missing"="black")
+
+SM_cols <- c("Strat Mean" = "darkgreen")
 
 
 for(CN in CNs){
@@ -287,15 +306,18 @@ for(CN in CNs){
     
     #add to overall SM est for unit
     SM_est_unit <- rbind(SM_est_unit,SM_est)
-    
+         tow_loss = 0 #making sure we only collect tow_loss data once
     for(cov in covs){
       
       print(cov)
       print(folders[folder_idx])
       print(season)  
       
-      #calculate loss of tows in non-covariate runs
-      if(cov == "No_Cov_alltows"){
+      
+      
+      #calculate loss of tows in non-covariate runs, but only do it once
+ 
+      if((cov %in% c("No_Cov", "No_Cov_alltows"))&tow_loss==0){
         
         tow_data <- tow_data_species[[CN]][[SA]]
 
@@ -312,14 +334,44 @@ for(CN in CNs){
       tow_data <- tow_data %>%
         filter(substr(SURVEY, 1, 4) =="NMFS") 
       
-      if(cov_type=="Temp_Hub"){tow_data_cov_only = subset(tow_data,!is.na(Temp_Hub))}
-      if(cov_type=="BOT_TEMP"){tow_data_cov_only = subset(tow_data,!is.na(BOT_TEMP),SEASON==season)}
+      if((cov_type=="Temp_Hub" & cov_data_type=="HubTemp")){tow_data_cov_only = subset(tow_data,!is.na(Temp_Hub))}
+      if((cov_type=="BOT_TEMP"& cov_data_type=="SurveyTemp")){tow_data_cov_only =  subset(tow_data,!is.na(BOT_TEMP))}
+      
+      if((cov_type=="Temp_Hub" & cov_data_type=="HubSurvey")){tow_data_cov_only = tow_data %>%  mutate(across(Temp_Hub, coalesce, BOT_TEMP))
+                                                                                   tow_data_cov_only = subset(tow_data_cov_only,!is.na(Temp_Hub))
+                                                                             
+                                                                                   }
+     
+      if((cov_type=="BOT_TEMP"& cov_data_type=="SurveyHub")){tow_data_cov_only = tow_data %>%  mutate(across(BOT_TEMP, coalesce, Temp_Hub))
+                                                                                  tow_data_cov_only = subset(tow_data_cov_only,!is.na(BOT_TEMP))}
+      
+      #count number of data points per year
+      N_data_year_alldata <- tow_data %>%
+        group_by(YEAR) %>%
+        summarise(Count = n())
+      
+      N_data_year_covdata <- tow_data_cov_only %>%
+        group_by(YEAR) %>%
+        summarise(Count = n())
+      
+      missing_data_year = matrix(nrow=length(unique(N_data_year_alldata$YEAR)),ncol=3)
+      colnames(missing_data_year)=c("pct_missing","Year","SEASON")
+      
+      missing_data_year[,1] = as.numeric((N_data_year_alldata$Count - N_data_year_covdata$Count)/N_data_year_alldata$Count)
+      
+      missing_data_year[,2]= as.numeric(N_data_year_alldata$YEAR)
+      
+      missing_data_year[,3] = season
+      
+      missing_data_year_all[[CN]][[SA]] = rbind( missing_data_year_all[[CN]][[SA]], missing_data_year)
       
       row_change = nrow(tow_data)-nrow(tow_data_cov_only)
        row_change_pct = row_change/nrow(tow_data)
        tow_data_decrease = rbind(tow_data_decrease,c(CN,SA,season,cov_data_type,nrow(tow_data),row_change,row_change_pct))
        colnames(tow_data_decrease) = c("Species","stock area","season","cov type","total tows","tows missing cov info", "percent change in tows")
-      }
+      
+       tow_loss = 1
+       }
       
       #pull out each value
       path = strsplit(folders[folder_idx],"/")
@@ -328,6 +380,20 @@ for(CN in CNs){
       VAST_fit_csv = read.csv(paste0(getwd(),"/",folders[folder_idx],"/Index_wYearSeason.csv"), header=T)
       VAST_fit_csv$SEASON = VAST_fit_csv$Season
       VAST_fit_csv$scenario = folders[folder_idx]
+      
+      #fix error with mislabeled csv
+      if(cov=="No_Cov"& unique(VAST_fit_csv$Covariate)=="No_Cov_alltows"){VAST_fit_csv$Covariate="No_Cov"
+      if(ncol(VAST_fit_csv)==14){VAST_fit_csv=VAST_fit_csv[,-1]} 
+      write.csv(VAST_fit_csv,file=paste0(getwd(),"/",folders[folder_idx],"/Index_wYearSeason.csv"))  
+       
+       }
+      if(ncol(VAST_fit_csv)==14){VAST_fit_csv=VAST_fit_csv[,-1]}#the fix above adds an extra column to the data table
+      
+      #add new column for new legend labels
+      if(unique(VAST_fit_csv$Covariate)=="W_Cov"){VAST_fit_csv$Covariate2="W_Cov_X2only"}
+      if(unique(VAST_fit_csv$Covariate)=="W_Cov_X1"){VAST_fit_csv$Covariate2="W_Cov_X1_X2"}
+      if(unique(VAST_fit_csv$Covariate)=="No_Cov"){VAST_fit_csv$Covariate2="No_Cov_covtows"}
+      if(unique(VAST_fit_csv$Covariate)=="No_Cov_alltows"){VAST_fit_csv$Covariate2="No_Cov_alltows"}
       
       #add to overall vast dataframe for unit
       VAST_fit_unit[[CN]][[SA]] <- rbind(VAST_fit_unit[[CN]][[SA]],VAST_fit_csv)
@@ -418,23 +484,37 @@ for(CN in CNs){
   }
    
 
-
-
+  #labels for the plot
+  towDatasubset_fall = subset(tow_data_decrease,(Species==CN & `stock area`==SA & season=="FALL"))
+  towDatasubset_spring = subset(tow_data_decrease,(Species==CN & `stock area`==SA & season=="SPRING"))
+  total_tows_fall = towDatasubset_fall$`total tows`
+  total_tows_spring = towDatasubset_spring$`total tows`
+  dec_tows_fall = towDatasubset_fall$`tows missing`
+  dec_tows_spring = towDatasubset_spring$`tows missing`
+  pct_tows_fall = round(as.numeric(towDatasubset_fall$`percent change in tows`),2)
+  pct_tows_spring = round(as.numeric(towDatasubset_spring$`percent change in tows`),2)
+  
+  
+  colsused = c(plot_cols[plot_cols=unique(VAST_fit_unit[[CN]][[SA]]$Covariate2)],SM_cols)
+  
   #plot each relative to stratified mean
   print(ggplot() +
 
           #plot VAST estimate with covariates
-          geom_errorbar(data=VAST_fit_unit[[CN]][[SA]],aes(x=Year,y=Estimate,group=Covariate,ymin=Estimate-(1.96*Std..Error.for.Estimate), ymax=Estimate+(1.96*Std..Error.for.Estimate), color = Covariate),width=.3) +
-          geom_point(data=VAST_fit_unit[[CN]][[SA]],aes(x=Year,y=Estimate,group=Covariate, color = Covariate),size=2)+
-          geom_line(data=VAST_fit_unit[[CN]][[SA]],aes(x=Year,y=Estimate,group=Covariate, color = Covariate))+
+          geom_errorbar(data=VAST_fit_unit[[CN]][[SA]],aes(x=Year,y=Estimate,group=Covariate2,ymin=Estimate-(1.96*Std..Error.for.Estimate), ymax=Estimate+(1.96*Std..Error.for.Estimate), color = Covariate2),width=.3) +
+          geom_point(data=VAST_fit_unit[[CN]][[SA]],aes(x=Year,y=Estimate,group=Covariate2, color = Covariate2),size=2)+
+          geom_line(data=VAST_fit_unit[[CN]][[SA]],aes(x=Year,y=Estimate,group=Covariate2, color = Covariate2))+
 
           #plot stratified calculation data
           geom_errorbar(data=SM_est_unit,aes(x=YEAR,y=mean.yr.absolute,group=SEASON,ymin=mean.yr.absolute-(1.96*sd.mean.yr.absolute), ymax=mean.yr.absolute+(1.96*sd.mean.yr.absolute), color = "Strat Mean"),width=.3) +
           geom_point(data=SM_est_unit,aes(x=YEAR,y=mean.yr.absolute,group=SEASON, color = "Strat Mean"))+
           geom_line(data=SM_est_unit,aes(x=YEAR,y=mean.yr.absolute,group=SEASON, color = "Strat Mean"))+
+          
+          scale_colour_manual(values = colsused) + #keep colors the same regardless of how many are being plotted
 
-
-          facet_wrap(~ SEASON, ncol =1, scales = "free") +
+          facet_wrap(~ SEASON, ncol =1, scales = "free", labeller = labeller(SEASON = 
+                                                                              c("FALL" = paste0("FALL towsN: ",total_tows_fall," missing: ",dec_tows_fall," pct: ",pct_tows_fall ),
+                                                                                "SPRING" = paste0("SPRING towsN: ",total_tows_spring," missing: ",dec_tows_spring," pct: ",pct_tows_spring )))) +
           # labs(x="year",y="Biomass", title = paste(folder,"  SeV=",round(VAST_Model_error[[s]][[folder]][["spring"]],digits=2),
           #                                          "  FC=", toString(FC_spring),
           #                                          "  SeSM=",round(SRS_Model_error[[s]][[folder]][["spring"]],digits=2),
@@ -444,6 +524,42 @@ for(CN in CNs){
 
           labs(x="Year",y="Biomass", title = paste0(CN," ",SA), color ="" )+
 
+          theme(axis.text=element_text(size=12),
+                axis.title=element_text(size=12),
+                title=element_text(size=8)))
+  
+  colsused2 = c(colsused,pct_mis_cols)
+ 
+   #plot confidence intervals
+  #plot each relative to stratified mean
+  print(ggplot() +
+          
+          #plot VAST estimate with covariates
+          geom_point(data=VAST_fit_unit[[CN]][[SA]],aes(x=Year,y=Std..Error.for.Estimate/Estimate,group=Covariate2, color = Covariate2),size=2) +
+          geom_line(data=VAST_fit_unit[[CN]][[SA]],aes(x=Year,y=Std..Error.for.Estimate/Estimate,group=Covariate2, color = Covariate2)) +
+          
+          #plot stratified calculation data
+          geom_point(data=SM_est_unit,aes(x=YEAR,y=sd.mean.yr.absolute/mean.yr.absolute,group=SEASON, color = "Strat Mean"))+
+          geom_line(data=SM_est_unit,aes(x=YEAR,y=sd.mean.yr.absolute/mean.yr.absolute,group=SEASON, color = "Strat Mean"))+
+          
+          #plot pct missing data in each year
+          geom_point(data=as.data.frame(missing_data_year_all[[CN]][[SA]]),aes(x=as.numeric(Year),y=as.numeric(pct_missing),group=SEASON, color = "% Missing"))+
+          geom_line(data=as.data.frame(missing_data_year_all[[CN]][[SA]]),aes(x=as.numeric(Year),y=as.numeric(pct_missing),group=SEASON, color = "% Missing"))+
+          
+          scale_colour_manual(values = colsused2) + #keep colors the same regardless of how many are being plotted
+          
+          facet_wrap(~ SEASON, ncol =1, scales = "free",labeller = labeller(SEASON = 
+                                                                              c("FALL" = paste0("FALL towsN: ",total_tows_fall," missing: ",dec_tows_fall," pct: ",pct_tows_fall ),
+                                                                                "SPRING" = paste0("SPRING towsN: ",total_tows_spring," missing: ",dec_tows_spring," pct: ",pct_tows_spring )))) +
+          # labs(x="year",y="Biomass", title = paste(folder,"  SeV=",round(VAST_Model_error[[s]][[folder]][["spring"]],digits=2),
+          #                                          "  FC=", toString(FC_spring),
+          #                                          "  SeSM=",round(SRS_Model_error[[s]][[folder]][["spring"]],digits=2),
+          #                                          "  FeV=",round(VAST_Model_error[[s]][[folder]][["fall"]],digits=2),
+          #                                          "  FC=", toString(FC_fall),
+          #                                          "  FeSM=",round(SRS_Model_error[[s]][[folder]][["fall"]],digits=2),sep=""), color ="" )
+          
+          labs(x="Year", title = paste0(CN," ",SA), color ="" )+
+          
           theme(axis.text=element_text(size=12),
                 axis.title=element_text(size=12),
                 title=element_text(size=8)))
@@ -550,7 +666,14 @@ for(CN in CNs){
       if(season=="SPRING"){SM_est = subset(strat_mean_species[[CN]][[SA]],SEASON=="SPRING")}
       if(season=="FALL"){SM_est = subset(strat_mean_species[[CN]][[SA]],SEASON=="FALL")}
       
-     
+      
+      #labels for the plot
+      towDatasubset = subset(tow_data_decrease,(Species==CN & `stock area`==SA & season==season))
+      total_tows = towDatasubset$`total tows`
+      dec_tows = towDatasubset$`tows missing`
+      pct_tows = round(as.numeric(towDatasubset$`percent change in tows`),2)
+      
+      labelll = paste0(" towsN: ",total_tows," missing: ",dec_tows," pct: ",pct_tows)
       
 #start multiple plots per page
 library(VAST)
@@ -565,17 +688,17 @@ if(!is.null(VAST_fit_cov[[CN]][[SA]][[season]])&length(VAST_fit_cov[[CN]][[SA]][
     # p1=plot(VAST_fit_cov[[CN]][[SA]][[season]][["X1"]])
     # print(p1)
     
-    p=try(plot(VAST_fit_cov[[CN]][[SA]][[season]][["X2"]],main=paste0(CN," ",SA," ",season)))
+    p=try(plot(VAST_fit_cov[[CN]][[SA]][[season]][["X2"]],main=paste0(CN," ",SA," ",season, labelll )))
     try(print(p))
     # plist[[season]] = try(plot(VAST_fit_cov[[CN]][[SA]][[season]]))
     try(remove(p))
     
-    p1=try(plot(VAST_fit_cov[[CN]][[SA]][[season]][["X1_X2"]][["X1"]],main=paste0(CN," ",SA," ",season)))
+    p1=try(plot(VAST_fit_cov[[CN]][[SA]][[season]][["X1_X2"]][["X1"]],main=paste0(CN," ",SA," ",season, labelll)))
     try(print(p1))
     # plist[[season]] = try(plot(VAST_fit_cov[[CN]][[SA]][[season]]))
     try(remove(p1))
     
-    p2=try(plot(VAST_fit_cov[[CN]][[SA]][[season]][["X1_X2"]][["X2"]],main=paste0(CN," ",SA," ",season)))
+    p2=try(plot(VAST_fit_cov[[CN]][[SA]][[season]][["X1_X2"]][["X2"]],main=paste0(CN," ",SA," ",season, labelll)))
     try(print(p2))
     # plist[[season]] = try(plot(VAST_fit_cov[[CN]][[SA]][[season]]))
     try(remove(p2))
@@ -591,6 +714,20 @@ dev.off()
 
 
 
+
+
+#plotting confidence intervals
+CI = list()
+
+for(CN in names(VAST_fit_unit)){
+  for(SA in names(VAST_fit_unit[[CN]])){
+    
+    CI[[CN]][[SA]]    
+    
+    
+  }
+  
+}
 
 
 
